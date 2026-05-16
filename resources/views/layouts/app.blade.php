@@ -143,6 +143,15 @@
                             <i class="bi bi-check2-square me-1"></i>Approvals
                         </a>
                     </li>
+                    @auth
+                        @if (Auth::user()->isAdmin())
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ route('admin.users') }}">
+                                    <i class="bi bi-people me-1"></i>Users
+                                </a>
+                            </li>
+                        @endif
+                    @endauth
                 </ul>
                 @auth
                     <ul class="navbar-nav ms-auto align-items-center gap-2">

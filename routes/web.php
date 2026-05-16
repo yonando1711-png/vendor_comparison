@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ComparisonController;
 use App\Http\Controllers\RfqController;
@@ -23,6 +24,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/comparisons', [ComparisonController::class, 'index'])->name('comparisons.index');
     Route::post('/comparisons', [ComparisonController::class, 'store'])->name('comparisons.store');
     Route::get('/comparisons/{comparison}', [ComparisonController::class, 'show'])->name('comparisons.show');
+    Route::get('/comparisons/{comparison}/edit', [ComparisonController::class, 'edit'])->name('comparisons.edit');
+    Route::put('/comparisons/{comparison}', [ComparisonController::class, 'update'])->name('comparisons.update');
     Route::post('/comparisons/{comparison}/approve', [ComparisonController::class, 'approve'])->name('comparisons.approve');
     Route::post('/comparisons/{comparison}/reject', [ComparisonController::class, 'reject'])->name('comparisons.reject');
+    Route::get('/comparisons/{comparison}/pdf', [ComparisonController::class, 'pdf'])->name('comparisons.pdf');
+    Route::post('/comparisons/{comparison}/odoo-post', [ComparisonController::class, 'odooPost'])->name('comparisons.odoo-post');
+
+    // Admin: user management
+    Route::get('/admin/users', [AdminController::class, 'index'])->name('admin.users');
+    Route::post('/admin/users', [AdminController::class, 'store'])->name('admin.users.store');
+    Route::put('/admin/users/{user}', [AdminController::class, 'update'])->name('admin.users.update');
+    Route::delete('/admin/users/{user}', [AdminController::class, 'destroy'])->name('admin.users.destroy');
 });

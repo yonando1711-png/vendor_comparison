@@ -12,6 +12,42 @@
         </ol>
     </nav>
 
+    {{-- Flash messages --}}
+    @if (session('success'))
+        <div class="alert alert-success alert-dismissible fade show d-flex align-items-center gap-2" role="alert">
+            <i class="bi bi-check-circle-fill"></i>
+            <span>{{ session('success') }}</span>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+    @if (session('error'))
+        <div class="alert alert-danger alert-dismissible fade show d-flex align-items-center gap-2" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <span>{{ session('error') }}</span>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
+    {{-- Prominent rejection notice for creators --}}
+    @if ($comparison->isRejected() && Auth::user()->isCreator())
+        <div class="alert alert-danger d-flex gap-3 align-items-start mb-4">
+            <i class="bi bi-x-octagon-fill fs-4 flex-shrink-0 mt-1"></i>
+            <div>
+                <h6 class="mb-1 fw-bold">This CLVP was rejected</h6>
+                <div class="mb-1">
+                    Rejected by <strong>{{ $comparison->rejectedBy->name ?? '—' }}</strong>
+                    on <strong>{{ $comparison->rejected_at?->format('d M Y H:i') }}</strong>
+                </div>
+                <div class="fst-italic">"{{ $comparison->rejection_reason }}"</div>
+                <div class="mt-2">
+                    <a href="{{ route('rfq.show', $comparison->po_id) }}" class="btn btn-sm btn-danger">
+                        <i class="bi bi-pencil me-1"></i>Submit New CLVP for this RFQ
+                    </a>
+                </div>
+            </div>
+        </div>
+    @endif
+
     {{-- Tabs --}}
     <ul class="nav nav-tabs mb-4" id="clvpTabs">
         <li class="nav-item">
@@ -22,6 +58,12 @@
         <li class="nav-item">
             <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabClvp">
                 <i class="bi bi-file-earmark-spreadsheet me-1"></i>Dokumen CLVP
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabLog">
+                <i class="bi bi-journal-text me-1"></i>Audit Log
+                <span class="badge bg-secondary ms-1">{{ $comparison->logs->count() }}</span>
             </button>
         </li>
     </ul>
@@ -50,6 +92,16 @@
                                 </span>
                             </div>
 
+                            {{-- Edit button for creator while pending supervisor --}}
+                            @if ($comparison->isEditableBy(Auth::user()))
+                                <div class="mb-3">
+                                    <a href="{{ route('comparisons.edit', $comparison) }}"
+                                        class="btn btn-outline-warning btn-sm w-100">
+                                        <i class="bi bi-pencil me-1"></i>Edit CLVP (pending supervisor)
+                                    </a>
+                                </div>
+                            @endif
+
                             {{-- Timeline --}}
                             <ul class="list-unstyled mb-0">
                                 {{-- Step 1: Submission --}}
@@ -66,7 +118,8 @@
                                         <div class="text-muted small">{{ $comparison->created_at->format('d M Y H:i') }}
                                         </div>
                                         @if ($comparison->notes)
-                                            <div class="mt-1 p-2 bg-light rounded small fst-italic">{{ $comparison->notes }}
+                                            <div class="mt-1 p-2 bg-light rounded small fst-italic">
+                                                {{ $comparison->notes }}
                                             </div>
                                         @endif
                                     </div>
@@ -373,10 +426,80 @@
         <div class="tab-pane fade" id="tabClvp">
 
             <div class="d-flex justify-content-end mb-3 gap-2">
+                <a href="{{ route('comparisons.pdf', $comparison) }}" target="_blank" class="btn btn-danger btn-sm">
+                    <i class="bi bi-file-earmark-pdf me-1"></i>Download PDF
+                </a>
                 <button class="btn btn-outline-secondary btn-sm" onclick="window.print()">
-                    <i class="bi bi-printer me-1"></i>Print / Export PDF
+                    <i class="bi bi-printer me-1"></i>Print
                 </button>
+                @if ($comparison->isApproved())
+                    @if ($comparison->odoo_synced_at)
+                        <span class="btn btn-sm btn-success disabled"
+                            title="Synced {{ $comparison->odoo_synced_at->diffForHumans() }}">
+                            <i class="bi bi-cloud-check-fill me-1"></i>Posted to Odoo
+                        </span>
+                    @else
+                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal"
+                            data-bs-target="#odooPostModal">
+                            <i class="bi bi-cloud-upload me-1"></i>Post to Odoo
+                        </button>
+                    @endif
+                @endif
             </div>
+
+            {{-- Post to Odoo modal --}}
+            @if ($comparison->isApproved() && !$comparison->odoo_synced_at)
+                <div class="modal fade" id="odooPostModal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <form method="POST" action="{{ route('comparisons.odoo-post', $comparison) }}"
+                                id="odooPostForm">
+                                @csrf
+                                <div class="modal-header">
+                                    <h6 class="modal-title">
+                                        <i class="bi bi-cloud-upload me-2 text-primary"></i>Post to Odoo —
+                                        {{ $comparison->po_name }}
+                                    </h6>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p class="text-muted small mb-3">
+                                        This will attach the CLVP PDF to the Odoo RFQ and post a log note to its chatter.
+                                        The note will include the recommended vendor, approval details, and your message
+                                        below.
+                                    </p>
+                                    <div class="bg-light border rounded p-3 mb-3 small">
+                                        <div class="fw-semibold mb-1 text-muted">Auto-generated summary:</div>
+                                        <div>✅ CLVP Approved — Recommended:
+                                            <strong>{{ $comparison->selected_vendor }}</strong></div>
+                                        <div>Approved by: <strong>{{ $comparison->manager->name ?? '—' }}</strong>
+                                            on {{ $comparison->manager_approved_at?->format('d M Y') }}</div>
+                                        <div>Submitted by: <strong>{{ $comparison->creator->name ?? '—' }}</strong></div>
+                                    </div>
+                                    <label class="form-label fw-semibold">Additional note <span
+                                            class="text-muted fw-normal">(optional)</span></label>
+                                    <textarea name="note" id="odooNoteInput" class="form-control" rows="4"
+                                        placeholder="Write any extra context to include in the Odoo log note, e.g. 'PO to be issued by end of week' or special instructions…"></textarea>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        data-bs-dismiss="modal">Cancel</button>
+                                    <button type="submit" id="odooPostBtn" class="btn btn-primary btn-sm">
+                                        <i class="bi bi-cloud-upload me-1"></i>Post to Odoo
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <script>
+                    document.getElementById('odooPostForm').addEventListener('submit', function() {
+                        const btn = document.getElementById('odooPostBtn');
+                        btn.disabled = true;
+                        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Posting…';
+                    });
+                </script>
+            @endif
 
             {{-- ── CLVP Document ── --}}
             <div id="clvpDocument" class="bg-white border p-4"
@@ -677,6 +800,46 @@
             </div>{{-- end clvpDocument --}}
 
         </div>{{-- end tabClvp --}}
+
+        {{-- ════════════════════════════════════════════════════════ --}}
+        {{-- TAB 3: AUDIT LOG                                         --}}
+        {{-- ════════════════════════════════════════════════════════ --}}
+        <div class="tab-pane fade" id="tabLog">
+            <div class="card" style="max-width:640px;">
+                <div class="card-header py-2">
+                    <h6 class="mb-0"><i class="bi bi-journal-text me-2"></i>Activity Log</h6>
+                </div>
+                <div class="card-body p-0">
+                    @if ($comparison->logs->isEmpty())
+                        <div class="p-3 text-muted small">No activity recorded yet.</div>
+                    @else
+                        <ul class="list-group list-group-flush">
+                            @foreach ($comparison->logs as $log)
+                                <li class="list-group-item py-3">
+                                    <div class="d-flex gap-3 align-items-start">
+                                        <i class="bi {{ $log->actionIcon() }} fs-5 mt-1 flex-shrink-0"></i>
+                                        <div class="flex-grow-1">
+                                            <div class="fw-semibold">{{ $log->actionLabel() }}</div>
+                                            <div class="text-muted small">
+                                                by {{ $log->user->name ?? 'System' }}
+                                                &middot; {{ $log->created_at->format('d M Y H:i') }}
+                                                ({{ $log->created_at->diffForHumans() }})
+                                            </div>
+                                            @if ($log->notes)
+                                                <div class="mt-1 p-2 bg-light rounded small fst-italic">
+                                                    {{ $log->notes }}
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+                </div>
+            </div>
+        </div>{{-- end tabLog --}}
+
     </div>{{-- end tab-content --}}
 
     <div class="mt-3">

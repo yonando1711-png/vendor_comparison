@@ -13,6 +13,11 @@
         </a>
     @elseif($rfq)
         {{-- ── Breadcrumb ── --}}
+        @if (request('from'))
+            <a href="{{ route('rfq.show', request('from')) }}" class="btn btn-sm btn-outline-secondary mb-3">
+                <i class="bi bi-arrow-left me-1"></i>Back to {{ request('from_name', 'previous RFQ') }}
+            </a>
+        @endif
         <nav aria-label="breadcrumb" class="mb-3">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="{{ route('rfq.index') }}">RFQ List</a></li>
@@ -24,8 +29,21 @@
         <div class="card mb-4">
             <div class="card-header py-3 d-flex align-items-center justify-content-between">
                 <h5><i class="bi bi-file-earmark-text me-2"></i>{{ $rfq['name'] }}</h5>
-                <span class="badge {{ $rfq['state'] === 'sent' ? 'badge-sent' : 'badge-rfq' }} fs-6">
-                    {{ $rfq['state'] === 'sent' ? 'RFQ Sent' : 'RFQ' }}
+                <span
+                    class="badge fs-6 {{ match ($rfq['state'] ?? '') {
+                        'sent' => 'badge-sent',
+                        'purchase' => 'bg-success',
+                        'done' => 'bg-secondary',
+                        'cancel' => 'bg-danger',
+                        default => 'badge-rfq',
+                    } }}">
+                    {{ match ($rfq['state'] ?? '') {
+                        'sent' => 'RFQ Sent',
+                        'purchase' => 'Purchase Order',
+                        'done' => 'Locked',
+                        'cancel' => 'Cancelled',
+                        default => 'RFQ',
+                    } }}
                 </span>
             </div>
             <div class="card-body">
@@ -71,197 +89,255 @@
             <span class="badge price-best px-2 py-1">&#9733; Best Price</span>
             <span class="badge price-current px-2 py-1">&#9830; Current RFQ Vendor</span>
             <span class="badge price-worst px-2 py-1">&#9660; Highest Price</span>
+            <span class="badge bg-primary px-2 py-1">&#128197; Latest Purchase</span>
             <span class="ms-auto text-muted small">
                 <i class="bi bi-info-circle me-1"></i>
-                History shows the latest confirmed purchase order per vendor for each product.
+                Shows most recent purchase + 3 cheapest historical vendors per product.
             </span>
         </div>
 
         {{-- ── Approval submission panel (creators only) ── --}}
         @auth
-            @php $existing = \App\Models\VendorComparison::where('po_id', $rfq['id'])->first(); @endphp
+            @php
+                // $existingComparison is passed from RfqController; $comparison from ComparisonController::edit()
+                $existing = $existingComparison ?? ($comparison ?? null);
+                $isEditMode = isset($comparison) && $comparison !== null;
+                $draftKey = 'clvp_draft_' . $rfq['id'];
+                $isActiveRfq = in_array($rfq['state'] ?? '', ['draft', 'sent']);
+            @endphp
 
-            @if ($existing)
-                <div
-                    class="alert d-flex align-items-center gap-3 mb-4
-                {{ $existing->isApproved() ? 'alert-success' : ($existing->isRejected() ? 'alert-danger' : 'alert-info') }}">
-                    <i
-                        class="bi {{ $existing->isApproved() ? 'bi-patch-check-fill' : ($existing->isRejected() ? 'bi-x-circle-fill' : 'bi-hourglass-split') }} fs-4"></i>
+            @if (!$isActiveRfq)
+                {{-- This is a confirmed / locked / cancelled PO — show read-only notice --}}
+                <div class="alert alert-secondary d-flex align-items-center gap-3 mb-4">
+                    <i class="bi bi-lock-fill fs-4 text-muted"></i>
                     <div>
-                        <strong>Comparison already submitted.</strong>
-                        Status: <span class="badge {{ $existing->statusBadgeClass() }}">{{ $existing->statusLabel() }}</span>
-                        &nbsp;
-                        <a href="{{ route('comparisons.show', $existing) }}" class="btn btn-sm btn-outline-secondary ms-2">
-                            <i class="bi bi-eye me-1"></i>View Approval Details
-                        </a>
+                        <strong>
+                            @if (($rfq['state'] ?? '') === 'cancel')
+                                Cancelled Purchase Order
+                            @else
+                                Confirmed Purchase Order
+                            @endif
+                        </strong>
+                        — This record is shown as <em>historical reference only</em>.
+                        CLVP submission is only available for active RFQs.
+                        @if ($existing)
+                            <a href="{{ route('comparisons.show', $existing) }}" class="btn btn-sm btn-outline-secondary ms-2">
+                                <i class="bi bi-eye me-1"></i>View CLVP
+                            </a>
+                        @endif
                     </div>
                 </div>
-            @elseif(Auth::user()->isCreator())
-                {{-- ════════════════════════════════════════════════════════
+            @else
+                @if ($existing && !$isEditMode)
+                    <div
+                        class="alert d-flex align-items-center gap-3 mb-4
+                    {{ $existing->isApproved() ? 'alert-success' : ($existing->isRejected() ? 'alert-danger' : 'alert-info') }}">
+                        <i
+                            class="bi {{ $existing->isApproved() ? 'bi-patch-check-fill' : ($existing->isRejected() ? 'bi-x-circle-fill' : 'bi-hourglass-split') }} fs-4"></i>
+                        <div>
+                            <strong>
+                                @if ($existing->isRejected())
+                                    CLVP was rejected.
+                                @else
+                                    Comparison already submitted.
+                                @endif
+                            </strong>
+                            Status: <span
+                                class="badge {{ $existing->statusBadgeClass() }}">{{ $existing->statusLabel() }}</span>
+                            @if ($existing->isRejected())
+                                <div class="mt-1 small fst-italic">"{{ $existing->rejection_reason }}"</div>
+                            @endif
+                            <a href="{{ route('comparisons.show', $existing) }}" class="btn btn-sm btn-outline-secondary ms-2">
+                                <i class="bi bi-eye me-1"></i>View Approval Details
+                            </a>
+                        </div>
+                    </div>
+                @endif
+
+                @if (Auth::user()->isCreator() && (!$existing || $isEditMode || $existing->isRejected()))
+                    {{-- ════════════════════════════════════════════════════════
                      DATA CALON VENDOR — CLVP Input Form
                 ════════════════════════════════════════════════════════ --}}
-                <div class="card mb-4 border-primary">
-                    <div class="card-header py-2 d-flex align-items-center justify-content-between"
-                        style="background:#eff6ff; border-color:#bfdbfe;">
-                        <h6 class="mb-0 text-primary">
-                            <i class="bi bi-table me-2"></i>Data Calon Vendor — Comparison Local Vendor Price (CLVP)
-                        </h6>
-                        <span class="badge bg-secondary" id="vendorCountBadge">0 vendor</span>
-                    </div>
-                    <div class="card-body">
+                    <div class="card mb-4 border-primary">
+                        <div class="card-header py-2 d-flex align-items-center justify-content-between"
+                            style="background:#eff6ff; border-color:#bfdbfe;">
+                            <h6 class="mb-0 text-primary">
+                                <i class="bi bi-table me-2"></i>
+                                @if ($isEditMode)
+                                    Edit CLVP — {{ $comparison->po_name }}
+                                @else
+                                    Data Calon Vendor — Comparison Local Vendor Price (CLVP)
+                                @endif
+                            </h6>
+                            <span class="badge bg-secondary" id="vendorCountBadge">0 vendor</span>
+                        </div>
+                        <div class="card-body">
 
-                        @if ($errors->any())
-                            <div class="alert alert-danger py-2 mb-3">
-                                <ul class="mb-0 ps-3">
-                                    @foreach ($errors->all() as $e)
-                                        <li>{{ $e }}</li>
-                                    @endforeach
-                                </ul>
-                            </div>
-                        @endif
-
-                        <form method="POST" action="{{ route('comparisons.store') }}" id="clvpForm">
-                            @csrf
-                            <input type="hidden" name="po_id" value="{{ $rfq['id'] }}">
-                            <input type="hidden" name="po_name" value="{{ $rfq['name'] }}">
-                            <input type="hidden" name="po_vendor"
-                                value="{{ is_array($rfq['partner_id']) ? $rfq['partner_id'][1] : '' }}">
-
-                            {{-- ── Category ── --}}
-                            <div class="mb-4">
-                                <label class="form-label fw-semibold">Kategori Pengadaan</label>
-                                <div class="d-flex flex-wrap gap-3">
-                                    @foreach (['unit_baru' => 'Unit Baru', 'aksesoris' => 'Aksesoris Mobil', 'sparepart' => 'Sparepart', 'umum' => 'Umum'] as $val => $lbl)
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio" name="category"
-                                                id="cat_{{ $val }}" value="{{ $val }}"
-                                                {{ old('category', 'umum') === $val ? 'checked' : '' }}>
-                                            <label class="form-check-label"
-                                                for="cat_{{ $val }}">{{ $lbl }}</label>
-                                        </div>
-                                    @endforeach
+                            @if ($errors->any())
+                                <div class="alert alert-danger py-2 mb-3">
+                                    <ul class="mb-0 ps-3">
+                                        @foreach ($errors->all() as $e)
+                                            <li>{{ $e }}</li>
+                                        @endforeach
+                                    </ul>
                                 </div>
-                            </div>
+                            @endif
 
-                            {{-- ── Vendor Cards ── --}}
-                            <div id="vendorCardsContainer" class="mb-4"></div>
+                            <form method="POST"
+                                action="{{ $isEditMode ? route('comparisons.update', $comparison) : route('comparisons.store') }}"
+                                id="clvpForm">
+                                @csrf
+                                @if ($isEditMode)
+                                    @method('PUT')
+                                @endif
+                                <input type="hidden" name="po_id" value="{{ $rfq['id'] }}">
+                                <input type="hidden" name="po_name" value="{{ $rfq['name'] }}">
+                                <input type="hidden" name="po_vendor"
+                                    value="{{ is_array($rfq['partner_id']) ? $rfq['partner_id'][1] : '' }}">
 
-                            <div class="d-flex gap-2 mb-4">
-                                <button type="button" class="btn btn-outline-primary btn-sm" id="addVendorBtn"
-                                    onclick="addVendorCard()">
-                                    <i class="bi bi-plus-circle me-1"></i>+ Tambah Vendor
-                                </button>
-                                <span class="text-muted small align-self-center">Minimal 3, maksimal 10 vendor</span>
-                            </div>
+                                {{-- ── Category ── --}}
+                                <div class="mb-4">
+                                    <label class="form-label fw-semibold">Kategori Pengadaan</label>
+                                    <div class="d-flex flex-wrap gap-3">
+                                        @foreach (['unit_baru' => 'Unit Baru', 'aksesoris' => 'Aksesoris Mobil', 'sparepart' => 'Sparepart', 'umum' => 'Umum'] as $val => $lbl)
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="category"
+                                                    id="cat_{{ $val }}" value="{{ $val }}"
+                                                    {{ old('category', $isEditMode ? $comparison->category ?? 'umum' : 'umum') === $val ? 'checked' : '' }}>
+                                                <label class="form-check-label"
+                                                    for="cat_{{ $val }}">{{ $lbl }}</label>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
 
-                            {{-- ── Price Matrix ── --}}
-                            <div id="priceMatrixSection" class="mb-4" style="display:none">
-                                <h6 class="fw-semibold mb-2">
-                                    <i class="bi bi-grid-3x3-gap me-1"></i>Harga per Item per Vendor
-                                </h6>
-                                <div class="table-responsive">
-                                    <table class="table table-bordered table-sm align-middle" id="priceMatrix">
-                                        <thead class="table-light">
-                                            <tr id="priceMatrixHeader">
-                                                <th class="text-center" style="width:40px">No</th>
-                                                <th>Nama Barang</th>
-                                                <th class="text-center" style="width:60px">Qty</th>
-                                                <th class="text-center" style="width:60px">UoM</th>
-                                                <th class="text-center" style="width:110px">Pricelist Ori (Rp)</th>
-                                                {{-- vendor columns injected by JS --}}
-                                            </tr>
-                                        </thead>
-                                        <tbody id="priceMatrixBody">
-                                            @php $lineIdx = 0; @endphp
-                                            @foreach ($rfq['lines'] as $line)
-                                                @php
-                                                    if (!is_array($line['product_id'])) {
-                                                        continue;
-                                                    }
-                                                    $pName = $line['product_id'][1];
-                                                    $pCode = $line['product_id'][0]; // use ID as code placeholder
-                                                    $uom = is_array($line['product_uom'])
-                                                        ? $line['product_uom'][1]
-                                                        : '';
-                                                @endphp
-                                                <tr data-row="{{ $lineIdx }}">
-                                                    <td class="text-center">{{ $lineIdx + 1 }}</td>
-                                                    <td>
-                                                        {{ $pName }}
-                                                        <input type="hidden"
-                                                            name="vendor_prices[{{ $lineIdx }}][product_id]"
-                                                            value="{{ $line['product_id'][0] }}">
-                                                        <input type="hidden"
-                                                            name="vendor_prices[{{ $lineIdx }}][product_name]"
-                                                            value="{{ $pName }}">
-                                                        <input type="hidden" name="vendor_prices[{{ $lineIdx }}][qty]"
-                                                            value="{{ $line['product_qty'] }}">
-                                                        <input type="hidden" name="vendor_prices[{{ $lineIdx }}][uom]"
-                                                            value="{{ $uom }}">
-                                                        <input type="hidden"
-                                                            name="vendor_prices[{{ $lineIdx }}][pricelist_original]"
-                                                            value="{{ $line['price_unit'] }}">
-                                                    </td>
-                                                    <td class="text-center">{{ $line['product_qty'] }}</td>
-                                                    <td class="text-center">{{ $uom }}</td>
-                                                    <td class="text-end pe-2">
-                                                        {{ number_format($line['price_unit'], 0, ',', '.') }}</td>
-                                                    {{-- price input cells injected by JS --}}
+                                {{-- ── Vendor Cards ── --}}
+                                <div id="vendorCardsContainer" class="mb-4"></div>
+
+                                <div class="d-flex gap-2 mb-4">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" id="addVendorBtn"
+                                        onclick="addVendorCard()">
+                                        <i class="bi bi-plus-circle me-1"></i>+ Tambah Vendor
+                                    </button>
+                                    <span class="text-muted small align-self-center">Minimal 3, maksimal 10 vendor</span>
+                                </div>
+
+                                {{-- ── Price Matrix ── --}}
+                                <div id="priceMatrixSection" class="mb-4" style="display:none">
+                                    <h6 class="fw-semibold mb-2">
+                                        <i class="bi bi-grid-3x3-gap me-1"></i>Harga per Item per Vendor
+                                    </h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-sm align-middle" id="priceMatrix">
+                                            <thead class="table-light">
+                                                <tr id="priceMatrixHeader">
+                                                    <th class="text-center" style="width:40px">No</th>
+                                                    <th>Nama Barang</th>
+                                                    <th class="text-center" style="width:60px">Qty</th>
+                                                    <th class="text-center" style="width:60px">UoM</th>
+                                                    <th class="text-center" style="width:110px">Pricelist Ori (Rp)</th>
+                                                    {{-- vendor columns injected by JS --}}
                                                 </tr>
-                                                @php $lineIdx++; @endphp
-                                            @endforeach
-                                        </tbody>
-                                    </table>
+                                            </thead>
+                                            <tbody id="priceMatrixBody">
+                                                @php $lineIdx = 0; @endphp
+                                                @foreach ($rfq['lines'] as $line)
+                                                    @php
+                                                        if (!is_array($line['product_id'])) {
+                                                            continue;
+                                                        }
+                                                        $pName = $line['product_id'][1];
+                                                        $pCode = $line['product_id'][0]; // use ID as code placeholder
+                                                        $uom = is_array($line['product_uom'])
+                                                            ? $line['product_uom'][1]
+                                                            : '';
+                                                    @endphp
+                                                    <tr data-row="{{ $lineIdx }}">
+                                                        <td class="text-center">{{ $lineIdx + 1 }}</td>
+                                                        <td>
+                                                            {{ $pName }}
+                                                            <input type="hidden"
+                                                                name="vendor_prices[{{ $lineIdx }}][product_id]"
+                                                                value="{{ $line['product_id'][0] }}">
+                                                            <input type="hidden"
+                                                                name="vendor_prices[{{ $lineIdx }}][product_name]"
+                                                                value="{{ $pName }}">
+                                                            <input type="hidden"
+                                                                name="vendor_prices[{{ $lineIdx }}][qty]"
+                                                                value="{{ $line['product_qty'] }}">
+                                                            <input type="hidden"
+                                                                name="vendor_prices[{{ $lineIdx }}][uom]"
+                                                                value="{{ $uom }}">
+                                                            <input type="hidden"
+                                                                name="vendor_prices[{{ $lineIdx }}][pricelist_original]"
+                                                                value="{{ $line['price_unit'] }}">
+                                                        </td>
+                                                        <td class="text-center">{{ $line['product_qty'] }}</td>
+                                                        <td class="text-center">{{ $uom }}</td>
+                                                        <td class="text-end pe-2">
+                                                            {{ number_format($line['price_unit'], 0, ',', '.') }}</td>
+                                                        {{-- price input cells injected by JS --}}
+                                                    </tr>
+                                                    @php $lineIdx++; @endphp
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
-                            </div>
 
-                            {{-- ── Recommended + Notes ── --}}
-                            <div class="row g-3 mb-3" id="recommendSection" style="display:none">
-                                <div class="col-md-5">
-                                    <label class="form-label fw-semibold">Vendor yang Direkomendasikan <span
-                                            class="text-danger">*</span></label>
-                                    <select name="selected_vendor" id="selectedVendorDropdown" class="form-select" required>
-                                        <option value="">— Pilih setelah menambah vendor —</option>
-                                    </select>
+                                {{-- ── Recommended + Notes ── --}}
+                                <div class="row g-3 mb-3" id="recommendSection" style="display:none">
+                                    <div class="col-md-5">
+                                        <label class="form-label fw-semibold">Vendor yang Direkomendasikan <span
+                                                class="text-danger">*</span></label>
+                                        <select name="selected_vendor" id="selectedVendorDropdown" class="form-select"
+                                            required>
+                                            <option value="">— Pilih setelah menambah vendor —</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-7">
+                                        <label class="form-label fw-semibold">Catatan / Justifikasi</label>
+                                        <textarea name="notes" class="form-control" rows="3" placeholder="Alasan pemilihan vendor...">{{ old('notes', $isEditMode ? $comparison->notes ?? '' : '') }}</textarea>
+                                    </div>
                                 </div>
-                                <div class="col-md-7">
-                                    <label class="form-label fw-semibold">Catatan / Justifikasi</label>
-                                    <textarea name="notes" class="form-control" rows="3" placeholder="Alasan pemilihan vendor...">{{ old('notes') }}</textarea>
-                                </div>
-                            </div>
 
-                            <button type="submit" class="btn btn-primary" id="clvpSubmitBtn" disabled>
-                                <i class="bi bi-send me-2"></i>Submit untuk Persetujuan Supervisor
-                            </button>
-                        </form>
+                                <button type="submit" class="btn btn-primary" id="clvpSubmitBtn" disabled>
+                                    <i class="bi bi-send me-2"></i>Submit untuk Persetujuan Supervisor
+                                </button>
+                            </form>
+                        </div>
                     </div>
-                </div>
 
-                {{-- ── Odoo vendor master data (embedded for auto-fill) ── --}}
-                <script>
-                    const ODOO_VENDORS = @json($vendors);
-                    const PRODUCT_ROWS = {{ $lineIdx ?? 0 }};
-                    let vendorCount = 0;
+                    {{-- ── Odoo vendor master data (embedded for auto-fill) ── --}}
+                    <script>
+                        const ODOO_VENDORS = @json($vendors);
+                        const PRODUCT_ROWS = {{ $lineIdx ?? 0 }};
+                        const IS_EDIT_MODE = {{ $isEditMode ? 'true' : 'false' }};
+                        const DRAFT_KEY = '{{ $draftKey ?? 'clvp_draft_0' }}';
+                        const PREFILL_VENDORS = @json($isEditMode ? $comparison->vendors ?? [] : []);
+                        const PREFILL_PRICES = @json($isEditMode ? $comparison->vendor_prices ?? [] : []);
+                        const PREFILL_SELECTED = @json($isEditMode ? $comparison->selected_vendor ?? '' : '');
+                        let vendorCount = 0;
 
-                    const vendorLookup = {};
-                    ODOO_VENDORS.forEach(v => {
-                        vendorLookup[v.id] = v;
-                    });
+                        const vendorLookup = {};
+                        ODOO_VENDORS.forEach(v => {
+                            vendorLookup[v.id] = v;
+                        });
 
-                    function buildAddress(v) {
-                        return [v.street, v.street2, v.city].filter(Boolean).join(', ');
-                    }
+                        function buildAddress(v) {
+                            return [v.street, v.street2, v.city].filter(Boolean).join(', ');
+                        }
 
-                    function addVendorCard() {
-                        if (vendorCount >= 10) return;
-                        const idx = vendorCount;
-                        vendorCount++;
+                        function addVendorCard() {
+                            if (vendorCount >= 10) return;
+                            const idx = vendorCount;
+                            vendorCount++;
 
-                        const container = document.getElementById('vendorCardsContainer');
-                        const card = document.createElement('div');
-                        card.className = 'card mb-3 vendor-card';
-                        card.dataset.idx = idx;
-                        card.innerHTML = `
+                            const container = document.getElementById('vendorCardsContainer');
+                            const card = document.createElement('div');
+                            card.className = 'card mb-3 vendor-card';
+                            card.dataset.idx = idx;
+                            card.innerHTML = `
                         <div class="card-header py-2 d-flex align-items-center gap-2"
                             style="background:#f8fafc;">
                             <i class="bi bi-shop text-primary"></i>
@@ -306,30 +382,9 @@
                                         name="vendors[${idx}][phone]" placeholder="No. telepon">
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label small fw-semibold mb-1">Email</label>
-                                    <input type="email" class="form-control form-control-sm"
-                                        name="vendors[${idx}][email]" placeholder="email@vendor.com">
-                                </div>
-                                <div class="col-md-4">
                                     <label class="form-label small fw-semibold mb-1">PIC / Contact Person</label>
                                     <input type="text" class="form-control form-control-sm"
                                         name="vendors[${idx}][pic]" placeholder="Nama kontak">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label small fw-semibold mb-1">Metode Pembayaran</label>
-                                    <select class="form-select form-select-sm" name="vendors[${idx}][payment_method]">
-                                        <option value="">-- Pilih --</option>
-                                        <option>Transfer Bank</option>
-                                        <option>COD</option>
-                                        <option>Giro</option>
-                                        <option>Tunai</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label small fw-semibold mb-1">Rekening Bank</label>
-                                    <input type="text" class="form-control form-control-sm"
-                                        name="vendors[${idx}][bank_account]"
-                                        placeholder="e.g., BCA - 1234567890 a.n. PT XYZ">
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label small fw-semibold mb-1">Term of Payment</label>
@@ -338,23 +393,17 @@
                                         placeholder="e.g., 30 hari">
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label small fw-semibold mb-1">Delivery Time</label>
-                                    <input type="text" class="form-control form-control-sm"
-                                        name="vendors[${idx}][delivery_time]"
-                                        placeholder="e.g., 5 Hari Kerja">
-                                </div>
-                                <div class="col-md-3">
                                     <label class="form-label small fw-semibold mb-1">Ketersediaan</label>
                                     <div class="d-flex gap-3 mt-1">
                                         <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox"
-                                                name="vendors[${idx}][ready]" value="1" id="ready_${idx}">
-                                            <label class="form-check-label small" for="ready_${idx}">Ready</label>
+                                            <input class="form-check-input" type="radio"
+                                                name="vendors[${idx}][availability]" value="ready" id="avail_ready_${idx}">
+                                            <label class="form-check-label small" for="avail_ready_${idx}">Ready</label>
                                         </div>
                                         <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox"
-                                                name="vendors[${idx}][indent]" value="1" id="indent_${idx}">
-                                            <label class="form-check-label small" for="indent_${idx}">Indent</label>
+                                            <input class="form-check-input" type="radio"
+                                                name="vendors[${idx}][availability]" value="indent" id="avail_indent_${idx}">
+                                            <label class="form-check-label small" for="avail_indent_${idx}">Indent</label>
                                         </div>
                                     </div>
                                 </div>
@@ -379,67 +428,68 @@
                             </div>
                         </div>`;
 
-                        container.appendChild(card);
-                        addPriceColumn(idx);
-                        refreshUI();
-                    }
-
-                    function removeVendorCard(idx) {
-                        const card = document.querySelector(`.vendor-card[data-idx="${idx}"]`);
-                        if (card) card.remove();
-                        removePriceColumn(idx);
-                        refreshUI();
-                    }
-
-                    function autoFill(idx, odooId) {
-                        if (!odooId) return;
-                        const v = vendorLookup[odooId];
-                        if (!v) return;
-                        const card = document.querySelector(`.vendor-card[data-idx="${idx}"]`);
-                        if (!card) return;
-                        card.querySelector(`[name="vendors[${idx}][name]"]`).value = v.name;
-                        card.querySelector(`[name="vendors[${idx}][alamat]"]`).value = buildAddress(v);
-                        card.querySelector(`[name="vendors[${idx}][phone]"]`).value = v.phone || v.mobile || '';
-                        card.querySelector(`[name="vendors[${idx}][email]"]`).value = v.email || '';
-                        onVendorNameChange(idx, v.name);
-                    }
-
-                    function onVendorNameChange(idx, name) {
-                        const titleEl = document.getElementById(`cardTitle_${idx}`);
-                        if (titleEl) titleEl.textContent = name || `Vendor ${idx+1}`;
-
-                        // Update price matrix column header
-                        const th = document.getElementById(`priceColHeader_${idx}`);
-                        if (th) {
-                            const nameSpan = th.querySelector('.vendor-col-name');
-                            if (nameSpan) nameSpan.textContent = name || `Vendor ${idx+1}`;
+                            container.appendChild(card);
+                            addPriceColumn(idx);
+                            refreshUI();
                         }
 
-                        // Update recommended dropdown
-                        refreshRecommendDropdown();
-                    }
+                        function removeVendorCard(idx) {
+                            const card = document.querySelector(`.vendor-card[data-idx="${idx}"]`);
+                            if (card) card.remove();
+                            removePriceColumn(idx);
+                            refreshUI();
+                        }
 
-                    function addPriceColumn(idx) {
-                        const rows = document.querySelectorAll('#priceMatrixBody tr[data-row]');
-                        if (rows.length === 0) return;
+                        function autoFill(idx, odooId) {
+                            if (!odooId) return;
+                            const v = vendorLookup[odooId];
+                            if (!v) return;
+                            const card = document.querySelector(`.vendor-card[data-idx="${idx}"]`);
+                            if (!card) return;
+                            card.querySelector(`[name="vendors[${idx}][name]"]`).value = v.name;
+                            card.querySelector(`[name="vendors[${idx}][alamat]"]`).value = buildAddress(v);
+                            card.querySelector(`[name="vendors[${idx}][phone]"]`).value = v.phone || v.mobile || '';
+                            const picEl = card.querySelector(`[name="vendors[${idx}][pic]"]`);
+                            if (picEl) picEl.value = v.contact_name || '';
+                            onVendorNameChange(idx, v.name);
+                        }
 
-                        // Add header
-                        const header = document.getElementById('priceMatrixHeader');
-                        const th = document.createElement('th');
-                        th.id = `priceColHeader_${idx}`;
-                        th.className = 'text-center';
-                        th.style.minWidth = '130px';
-                        th.innerHTML = `<span class="vendor-col-name small">Vendor ${idx+1}</span>
-                        <div class="small text-muted fst-italic" style="font-size:.7rem">PIC/Telp</div>`;
-                        header.appendChild(th);
+                        function onVendorNameChange(idx, name) {
+                            const titleEl = document.getElementById(`cardTitle_${idx}`);
+                            if (titleEl) titleEl.textContent = name || `Vendor ${idx+1}`;
 
-                        // Add input cell per product row
-                        rows.forEach(row => {
-                            const rowIdx = row.dataset.row;
-                            const td = document.createElement('td');
-                            td.className = 'p-1';
-                            td.id = `priceCell_${rowIdx}_${idx}`;
-                            td.innerHTML = `
+                            // Update price matrix column header
+                            const th = document.getElementById(`priceColHeader_${idx}`);
+                            if (th) {
+                                const nameSpan = th.querySelector('.vendor-col-name');
+                                if (nameSpan) nameSpan.textContent = name || `Vendor ${idx+1}`;
+                            }
+
+                            // Update recommended dropdown
+                            refreshRecommendDropdown();
+                        }
+
+                        function addPriceColumn(idx) {
+                            const rows = document.querySelectorAll('#priceMatrixBody tr[data-row]');
+                            if (rows.length === 0) return;
+
+                            // Add header
+                            const header = document.getElementById('priceMatrixHeader');
+                            const th = document.createElement('th');
+                            th.id = `priceColHeader_${idx}`;
+                            th.className = 'text-center';
+                            th.style.minWidth = '130px';
+                            th.innerHTML = `<span class="vendor-col-name small">Vendor ${idx+1}</span>
+                        <div class="small text-muted fst-italic" style="font-size:.7rem">Harga</div>`;
+                            header.appendChild(th);
+
+                            // Add input cell per product row
+                            rows.forEach(row => {
+                                const rowIdx = row.dataset.row;
+                                const td = document.createElement('td');
+                                td.className = 'p-1';
+                                td.id = `priceCell_${rowIdx}_${idx}`;
+                                td.innerHTML = `
                             <div class="input-group input-group-sm">
                                 <input type="number" min="0" step="1"
                                     class="form-control form-control-sm text-end price-input"
@@ -452,76 +502,244 @@
                                     onchange="toggleTidakJual(${rowIdx},${idx},this)">
                                 <label class="form-check-label small text-muted" for="tj_${rowIdx}_${idx}">Tidak Jual</label>
                             </div>`;
-                            row.appendChild(td);
-                        });
+                                row.appendChild(td);
+                            });
 
-                        document.getElementById('priceMatrixSection').style.display = '';
-                        document.getElementById('recommendSection').style.display = '';
-                    }
-
-                    function removePriceColumn(idx) {
-                        const th = document.getElementById(`priceColHeader_${idx}`);
-                        if (th) th.remove();
-                        document.querySelectorAll(`[id^="priceCell_"][id$="_${idx}"]`).forEach(td => td.remove());
-
-                        const allHeaders = document.querySelectorAll('#priceMatrixHeader th');
-                        if (allHeaders.length <= 5) { // only fixed cols remain
-                            document.getElementById('priceMatrixSection').style.display = 'none';
-                            document.getElementById('recommendSection').style.display = 'none';
+                            document.getElementById('priceMatrixSection').style.display = '';
+                            document.getElementById('recommendSection').style.display = '';
                         }
-                    }
 
-                    function toggleTidakJual(rowIdx, vendorIdx, cb) {
-                        const input = document.querySelector(`[name="vendor_prices[${rowIdx}][prices][${vendorIdx}]"]`);
-                        if (input) {
-                            input.disabled = cb.checked;
-                            if (cb.checked) {
-                                input.value = 0;
+                        function removePriceColumn(idx) {
+                            const th = document.getElementById(`priceColHeader_${idx}`);
+                            if (th) th.remove();
+                            document.querySelectorAll(`[id^="priceCell_"][id$="_${idx}"]`).forEach(td => td.remove());
+
+                            const allHeaders = document.querySelectorAll('#priceMatrixHeader th');
+                            if (allHeaders.length <= 5) { // only fixed cols remain
+                                document.getElementById('priceMatrixSection').style.display = 'none';
+                                document.getElementById('recommendSection').style.display = 'none';
                             }
                         }
-                    }
 
-                    function refreshRecommendDropdown() {
-                        const dropdown = document.getElementById('selectedVendorDropdown');
-                        const prev = dropdown.value;
-                        dropdown.innerHTML = '<option value="">— Pilih vendor yang direkomendasikan —</option>';
-                        document.querySelectorAll('.vendor-name-input').forEach(inp => {
-                            if (inp.value.trim()) {
-                                const opt = document.createElement('option');
-                                opt.value = inp.value.trim();
-                                opt.textContent = inp.value.trim();
-                                if (opt.value === prev) opt.selected = true;
-                                dropdown.appendChild(opt);
+                        function toggleTidakJual(rowIdx, vendorIdx, cb) {
+                            const input = document.querySelector(`[name="vendor_prices[${rowIdx}][prices][${vendorIdx}]"]`);
+                            if (input) {
+                                input.disabled = cb.checked;
+                                if (cb.checked) {
+                                    input.value = 0;
+                                }
                             }
-                        });
-                    }
-
-                    function refreshUI() {
-                        const cards = document.querySelectorAll('.vendor-card');
-                        const n = cards.length;
-                        const badge = document.getElementById('vendorCountBadge');
-                        badge.textContent = n + ' vendor';
-                        badge.className = 'badge ms-2 ' + (n < 3 ? 'bg-secondary' : n <= 10 ? 'bg-success' : 'bg-danger');
-
-                        document.getElementById('addVendorBtn').disabled = n >= 10;
-                        document.getElementById('clvpSubmitBtn').disabled = n < 3;
-                        refreshRecommendDropdown();
-                    }
-
-                    document.getElementById('clvpForm').addEventListener('submit', function(e) {
-                        const cards = document.querySelectorAll('.vendor-card');
-                        if (cards.length < 3 || cards.length > 10) {
-                            e.preventDefault();
-                            alert('Harap tambahkan minimal 3 dan maksimal 10 vendor.');
-                            return;
                         }
-                        // Re-enable any disabled price inputs so they POST as 0
-                        document.querySelectorAll('.price-input:disabled').forEach(i => {
-                            i.disabled = false;
+
+                        function refreshRecommendDropdown() {
+                            const dropdown = document.getElementById('selectedVendorDropdown');
+                            const prev = dropdown.value;
+                            dropdown.innerHTML = '<option value="">— Pilih vendor yang direkomendasikan —</option>';
+                            document.querySelectorAll('.vendor-name-input').forEach(inp => {
+                                if (inp.value.trim()) {
+                                    const opt = document.createElement('option');
+                                    opt.value = inp.value.trim();
+                                    opt.textContent = inp.value.trim();
+                                    if (opt.value === prev) opt.selected = true;
+                                    dropdown.appendChild(opt);
+                                }
+                            });
+                        }
+
+                        function refreshUI() {
+                            const cards = document.querySelectorAll('.vendor-card');
+                            const n = cards.length;
+                            const badge = document.getElementById('vendorCountBadge');
+                            badge.textContent = n + ' vendor';
+                            badge.className = 'badge ms-2 ' + (n < 3 ? 'bg-secondary' : n <= 10 ? 'bg-success' : 'bg-danger');
+
+                            document.getElementById('addVendorBtn').disabled = n >= 10;
+                            document.getElementById('clvpSubmitBtn').disabled = n < 3;
+                            refreshRecommendDropdown();
+                        }
+
+                        document.getElementById('clvpForm').addEventListener('submit', function(e) {
+                            const cards = document.querySelectorAll('.vendor-card');
+                            if (cards.length < 3 || cards.length > 10) {
+                                e.preventDefault();
+                                alert('Harap tambahkan minimal 3 dan maksimal 10 vendor.');
+                                return;
+                            }
+                            // Re-enable any disabled price inputs so they POST as 0
+                            document.querySelectorAll('.price-input:disabled').forEach(i => {
+                                i.disabled = false;
+                            });
+                            // Clear draft on successful submit
+                            try {
+                                localStorage.removeItem(DRAFT_KEY);
+                            } catch (e) {}
                         });
-                    });
-                </script>
-            @endif
+
+                        // ── localStorage draft save / restore ──────────────────────
+                        function saveDraft() {
+                            if (IS_EDIT_MODE) return; // don't draft over an edit
+                            try {
+                                const data = {
+                                    vendors: [],
+                                    category: null,
+                                    selected_vendor: null,
+                                    notes: null
+                                };
+                                document.querySelectorAll('.vendor-card').forEach(card => {
+                                    const v = {};
+                                    card.querySelectorAll('[name]').forEach(el => {
+                                        const m = el.name.match(/vendors\[\d+\]\[(.+)\]/);
+                                        if (!m) return;
+                                        if (el.type === 'radio') {
+                                            if (el.checked) v[m[1]] = el.value;
+                                        } else {
+                                            v[m[1]] = el.value;
+                                        }
+                                    });
+                                    data.vendors.push(v);
+                                });
+                                const cat = document.querySelector('input[name="category"]:checked');
+                                data.category = cat ? cat.value : null;
+                                const sel = document.getElementById('selectedVendorDropdown');
+                                data.selected_vendor = sel ? sel.value : null;
+                                const notes = document.querySelector('textarea[name="notes"]');
+                                data.notes = notes ? notes.value : null;
+                                // prices
+                                const prices = [];
+                                document.querySelectorAll('#priceMatrixBody tr').forEach(row => {
+                                    const rowData = {};
+                                    row.querySelectorAll('[name]').forEach(el => {
+                                        const m = el.name.match(/vendor_prices\[\d+\]\[(.+)\]/);
+                                        if (m) rowData[m[1]] = el.value;
+                                    });
+                                    if (Object.keys(rowData).length) prices.push(rowData);
+                                });
+                                data.prices = prices;
+                                localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+                            } catch (e) {}
+                        }
+
+                        function loadDraft() {
+                            if (IS_EDIT_MODE) {
+                                // Pre-fill from existing comparison data
+                                PREFILL_VENDORS.forEach(v => {
+                                    addVendorCard();
+                                    const idx = vendorCount - 1;
+                                    const card = document.querySelectorAll('.vendor-card')[idx];
+                                    const fields = ['name', 'alamat', 'phone', 'pic',
+                                        'term_of_payment', 'tax_info', 'discount', 'other_terms'
+                                    ];
+                                    fields.forEach(f => {
+                                        const el = card.querySelector(`[name="vendors[${idx}][${f}]"]`);
+                                        if (el && v[f] !== undefined) el.value = v[f];
+                                    });
+                                    if (v['availability']) {
+                                        const rb = card.querySelector(
+                                            `[name="vendors[${idx}][availability]"][value="${v['availability']}"]`);
+                                        if (rb) rb.checked = true;
+                                    }
+                                    // sync recommended dropdown
+                                    const nameInp = card.querySelector('.vendor-name-input');
+                                    if (nameInp) nameInp.dispatchEvent(new Event('input'));
+                                });
+                                // Pre-fill prices
+                                PREFILL_PRICES.forEach((row, ri) => {
+                                    PREFILL_VENDORS.forEach((_, vi) => {
+                                        const inp = document.querySelector(
+                                            `#priceMatrixBody tr[data-row="${ri}"] .price-input[data-vendor="${vi}"]`);
+                                        const cb = document.querySelector(
+                                            `#priceMatrixBody tr[data-row="${ri}"] .notjual-cb[data-vendor="${vi}"]`);
+                                        if (inp && row.prices && row.prices[vi] !== undefined) {
+                                            const p = row.prices[vi];
+                                            if (p == 0 || p === '') {
+                                                if (cb) {
+                                                    cb.checked = true;
+                                                    inp.disabled = true;
+                                                    inp.value = 0;
+                                                }
+                                            } else {
+                                                inp.value = p;
+                                            }
+                                        }
+                                    });
+                                });
+                                // Pre-fill selected vendor
+                                if (PREFILL_SELECTED) {
+                                    setTimeout(() => {
+                                        const sel = document.getElementById('selectedVendorDropdown');
+                                        if (sel) sel.value = PREFILL_SELECTED;
+                                    }, 100);
+                                }
+                                return;
+                            }
+                            // Draft restore
+                            try {
+                                const raw = localStorage.getItem(DRAFT_KEY);
+                                if (!raw) return;
+                                const data = JSON.parse(raw);
+                                if (!data.vendors || !data.vendors.length) return;
+                                if (!confirm('Ditemukan draft tersimpan untuk RFQ ini. Muat kembali?')) {
+                                    localStorage.removeItem(DRAFT_KEY);
+                                    return;
+                                }
+                                data.vendors.forEach(v => {
+                                    addVendorCard();
+                                    const idx = vendorCount - 1;
+                                    const card = document.querySelectorAll('.vendor-card')[idx];
+                                    const fields = ['name', 'alamat', 'phone', 'pic',
+                                        'term_of_payment', 'tax_info', 'discount', 'other_terms'
+                                    ];
+                                    fields.forEach(f => {
+                                        const el = card.querySelector(`[name="vendors[${idx}][${f}]"]`);
+                                        if (el && v[f] !== undefined) el.value = v[f];
+                                    });
+                                    if (v['availability']) {
+                                        const rb = card.querySelector(
+                                            `[name="vendors[${idx}][availability]"][value="${v['availability']}"]`);
+                                        if (rb) rb.checked = true;
+                                    }
+                                    const nameInp = card.querySelector('.vendor-name-input');
+                                    if (nameInp) nameInp.dispatchEvent(new Event('input'));
+                                });
+                                if (data.category) {
+                                    const cat = document.querySelector(`input[name="category"][value="${data.category}"]`);
+                                    if (cat) cat.checked = true;
+                                }
+                                if (data.selected_vendor) {
+                                    setTimeout(() => {
+                                        const sel = document.getElementById('selectedVendorDropdown');
+                                        if (sel) sel.value = data.selected_vendor;
+                                    }, 100);
+                                }
+                                if (data.notes) {
+                                    const notes = document.querySelector('textarea[name="notes"]');
+                                    if (notes) notes.value = data.notes;
+                                }
+                            } catch (e) {
+                                localStorage.removeItem(DRAFT_KEY);
+                            }
+                        }
+
+                        // Debounced auto-save
+                        let draftTimer = null;
+
+                        function scheduleSave() {
+                            clearTimeout(draftTimer);
+                            draftTimer = setTimeout(saveDraft, 1500);
+                        }
+                        document.getElementById('clvpForm').addEventListener('input', scheduleSave);
+                        document.getElementById('clvpForm').addEventListener('change', scheduleSave);
+
+                        // Load draft / prefill after DOM ready
+                        document.addEventListener('DOMContentLoaded', loadDraft);
+                        @if (session('clear_draft_key'))
+                            try {
+                                localStorage.removeItem('{{ session('clear_draft_key') }}');
+                            } catch (e) {}
+                        @endif
+                    </script>
+                @endif
+            @endif {{-- end $isActiveRfq --}}
         @endauth
 
         {{-- ── Per-product comparison blocks ── --}}
@@ -618,17 +836,76 @@
                                         </td>
                                     </tr>
 
-                                    {{-- Historical vendors (excluding current RFQ vendor to avoid duplicate) --}}
+                                    {{-- Historical vendors --}}
                                     @php
-                                        // Sort by price ascending
-                                        $sortedRows = array_values($vendorRows);
-                                        usort($sortedRows, fn($a, $b) => $a['price_unit'] <=> $b['price_unit']);
+                                        $otherRows = array_values(
+                                            array_filter(
+                                                array_values($vendorRows),
+                                                fn($r) => $r['vendor_id'] !== $rfqVendorId,
+                                            ),
+                                        );
+
+                                        // Most recent purchase (by date desc)
+                                        $byDate = $otherRows;
+                                        usort($byDate, fn($a, $b) => strtotime($b['date']) <=> strtotime($a['date']));
+                                        $mostRecentRow = $byDate[0] ?? null;
+
+                                        // 3 cheapest (by price asc), excluding the most-recent row to avoid duplicate
+                                        $byPrice = $otherRows;
+                                        usort($byPrice, fn($a, $b) => $a['price_unit'] <=> $b['price_unit']);
+                                        $cheapRows = array_slice(
+                                            array_values(
+                                                array_filter(
+                                                    $byPrice,
+                                                    fn($r) => !$mostRecentRow ||
+                                                        $r['vendor_id'] !== $mostRecentRow['vendor_id'],
+                                                ),
+                                            ),
+                                            0,
+                                            3,
+                                        );
+                                        $totalHistoryCount = count($otherRows);
                                     @endphp
 
-                                    @foreach ($sortedRows as $row)
-                                        @if ($row['vendor_id'] === $rfqVendorId)
-                                            @continue
-                                        @endif
+                                    {{-- Most Recent Purchase row --}}
+                                    @if ($mostRecentRow)
+                                        @php
+                                            $isBest = $bestPrice !== null && $mostRecentRow['price_unit'] == $bestPrice;
+                                        @endphp
+                                        <tr class="table-info" style="border-left: 3px solid #0d6efd;">
+                                            <td class="ps-3 fw-semibold">
+                                                {{ $mostRecentRow['vendor_name'] }}
+                                            </td>
+                                            <td class="text-center fw-semibold">
+                                                {{ $currency }}
+                                                {{ number_format($mostRecentRow['price_unit'], 2, ',', '.') }}
+                                                @if ($isBest)
+                                                    <i class="bi bi-check-circle-fill text-success ms-1"
+                                                        title="Best Price"></i>
+                                                @endif
+                                            </td>
+                                            <td class="text-center">{{ $mostRecentRow['product_qty'] }}</td>
+                                            <td class="text-center">{{ $mostRecentRow['uom'] }}</td>
+                                            <td>
+                                                <a href="{{ route('rfq.show', $mostRecentRow['order_id']) }}?from={{ $rfq['id'] }}&from_name={{ urlencode($rfq['name']) }}"
+                                                    class="text-decoration-none small">
+                                                    {{ $mostRecentRow['po_name'] }}
+                                                </a>
+                                            </td>
+                                            <td class="fw-semibold">
+                                                {{ \Illuminate\Support\Carbon::parse($mostRecentRow['date'])->format('d M Y H:i') }}
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge bg-primary">Latest Purchase</span>
+                                                @if ($isBest)
+                                                    <span class="badge bg-success">Best Price</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endif
+
+                                    {{-- 3 cheapest (excluding the most-recent row already shown above) --}}
+                                    @foreach ($cheapRows as $row)
                                         @php
                                             $isBest = $bestPrice !== null && $row['price_unit'] == $bestPrice;
                                             $isWorst =
@@ -656,7 +933,7 @@
                                             <td class="text-center">{{ $row['product_qty'] }}</td>
                                             <td class="text-center">{{ $row['uom'] }}</td>
                                             <td>
-                                                <a href="{{ route('rfq.show', $row['order_id']) }}"
+                                                <a href="{{ route('rfq.show', $row['order_id']) }}?from={{ $rfq['id'] }}&from_name={{ urlencode($rfq['name']) }}"
                                                     class="text-decoration-none small">
                                                     {{ $row['po_name'] }}
                                                 </a>
@@ -674,13 +951,18 @@
                                         </tr>
                                     @endforeach
 
-                                    @if (empty($vendorRows) ||
-                                            (count($vendorRows) === 1 && isset($vendorRows[$rfqVendorId])) ||
-                                            count(array_filter($sortedRows, fn($r) => $r['vendor_id'] !== $rfqVendorId)) === 0)
+                                    @if (!$mostRecentRow && empty($cheapRows))
                                         <tr>
                                             <td colspan="7" class="text-center text-muted py-3 small">
                                                 <i class="bi bi-clock-history me-1"></i>
                                                 No purchase history from other vendors for this product.
+                                            </td>
+                                        </tr>
+                                    @elseif ($totalHistoryCount > 4)
+                                        <tr>
+                                            <td colspan="7" class="text-center text-muted py-2 small fst-italic">
+                                                Showing latest purchase + 3 cheapest of {{ $totalHistoryCount }} vendors in
+                                                history.
                                             </td>
                                         </tr>
                                     @endif

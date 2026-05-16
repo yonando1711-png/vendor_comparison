@@ -26,6 +26,7 @@ class VendorComparison extends Model
         'rejected_by',
         'rejected_at',
         'rejection_reason',
+        'odoo_synced_at',
     ];
 
     protected $casts = [
@@ -34,6 +35,7 @@ class VendorComparison extends Model
         'supervisor_approved_at' => 'datetime',
         'manager_approved_at'    => 'datetime',
         'rejected_at'            => 'datetime',
+        'odoo_synced_at'         => 'datetime',
     ];
 
     // ── Relationships ──────────────────────────────────────
@@ -56,6 +58,20 @@ class VendorComparison extends Model
     public function rejectedBy()
     {
         return $this->belongsTo(User::class, 'rejected_by');
+    }
+
+    public function logs()
+    {
+        return $this->hasMany(ComparisonLog::class)->orderBy('created_at');
+    }
+
+    // ── Editable check ─────────────────────────────────────
+
+    public function isEditableBy(\App\Models\User $user): bool
+    {
+        return $this->isPendingSupervisor()
+            && $user->isCreator()
+            && $this->created_by === $user->id;
     }
 
     // ── Status helpers ─────────────────────────────────────

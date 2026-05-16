@@ -134,6 +134,9 @@ class OdooService
                 ]
             );
 
+            // Store when cache was last populated
+            Cache::put('odoo_rfqs_cached_at', now(), 300);
+
             return $orders ?? [];
         });
     }
@@ -341,5 +344,55 @@ class OdooService
         Cache::forget('odoo_vendors');
         // Per-RFQ and per-product caches use dynamic keys; flush by tag not available
         // in file/database drivers — they will expire naturally on their TTL.
+    }
+
+    /**
+     * Upload a PDF as an ir.attachment linked to a purchase.order record.
+     *
+     * @param int    $poId        Odoo purchase.order record ID
+     * @param string $pdfBase64   Base64-encoded PDF content
+     * @param string $filename    Filename shown in Odoo (e.g. "CLVP-2026-POO-01322.pdf")
+     * @return int   Newly created ir.attachment ID
+     */
+    public function attachPdfToPO(int $poId, string $pdfBase64, string $filename): int
+    {
+        $attachmentId = $this->call(
+            'ir.attachment',
+            'create',
+            [[
+                'name'      => $filename,
+                'type'      => 'binary',
+                'datas'     => $pdfBase64,
+                'res_model' => 'purchase.order',
+                'res_id'    => $poId,
+                'mimetype'  => 'application/pdf',
+            ]]
+        );
+
+        if (!is_int($attachmentId)) {
+            throw new \RuntimeException('Odoo ir.attachment creation returned unexpected result.');
+        }
+
+        return $attachmentId;
+    }
+
+    /**
+     * Post an internal log note to the chatter of a purchase.order record.
+     *
+     * @param int    $poId      Odoo purchase.order record ID
+     * @param string $htmlBody  HTML message body
+     */
+    public function postChatterNote(int $poId, string $htmlBody): void
+    {
+        $this->call(
+            'purchase.order',
+            'message_post',
+            [[$poId]],
+            [
+                'body'           => $htmlBody,
+                'message_type'   => 'comment',
+                'subtype_xmlid'  => 'mail.mt_note',
+            ]
+        );
     }
 }

@@ -14,5 +14,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // Only creators (staff) can submit comparisons
         Gate::define('create-comparison', fn(User $user) => $user->isCreator());
+        // Only admins can manage users
+        Gate::define('manage-users', fn(User $user) => $user->isAdmin());
     }
 }

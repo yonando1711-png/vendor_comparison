@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Purchasing Staff',     'role' => 'creator',    'email' => 'staff@harent.com',      'password' => Hash::make('harent123')],
             ['name' => 'Purchasing Supervisor', 'role' => 'supervisor', 'email' => 'supervisor@harent.com', 'password' => Hash::make('harent123')],
             ['name' => 'Purchasing Manager',    'role' => 'manager',    'email' => 'manager@harent.com',    'password' => Hash::make('harent123')],
+            ['name' => 'Admin',                 'role' => 'admin',      'email' => 'admin@harent.com',      'password' => Hash::make('harent123')],
         ];
 
         foreach ($users as $data) {
