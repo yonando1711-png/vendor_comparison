@@ -83,19 +83,6 @@
             </div>
         </div>
 
-        {{-- ── Legend ── --}}
-        <div class="d-flex gap-3 mb-3 flex-wrap align-items-center">
-            <span class="fw-semibold small">Legend:</span>
-            <span class="badge price-best px-2 py-1">&#9733; Best Price</span>
-            <span class="badge price-current px-2 py-1">&#9830; Current RFQ Vendor</span>
-            <span class="badge price-worst px-2 py-1">&#9660; Highest Price</span>
-            <span class="badge bg-primary px-2 py-1">&#128197; Latest Purchase</span>
-            <span class="ms-auto text-muted small">
-                <i class="bi bi-info-circle me-1"></i>
-                Shows most recent purchase + 3 cheapest historical vendors per product.
-            </span>
-        </div>
-
         {{-- ── Approval submission panel (creators only) ── --}}
         @auth
             @php
@@ -299,6 +286,9 @@
                                         <label class="form-label fw-semibold">Catatan / Justifikasi</label>
                                         <textarea name="notes" class="form-control" rows="3" placeholder="Alasan pemilihan vendor...">{{ old('notes', $isEditMode ? $comparison->notes ?? '' : '') }}</textarea>
                                     </div>
+                                    <div class="col-12">
+                                        <div id="vendorRecommendHint" style="display:none"></div>
+                                    </div>
                                 </div>
 
                                 <button type="submit" class="btn btn-primary" id="clvpSubmitBtn" disabled>
@@ -306,6 +296,19 @@
                                 </button>
                             </form>
                         </div>
+                    </div>
+
+                    {{-- ── Legend ── --}}
+                    <div class="d-flex gap-3 mb-3 flex-wrap align-items-center">
+                        <span class="fw-semibold small">Legend:</span>
+                        <span class="badge price-best px-2 py-1">&#9733; Best Price</span>
+                        <span class="badge price-current px-2 py-1">&#9830; Current RFQ Vendor</span>
+                        <span class="badge price-worst px-2 py-1">&#9660; Highest Price</span>
+                        <span class="badge bg-primary px-2 py-1">&#128197; Latest Purchase</span>
+                        <span class="ms-auto text-muted small">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Shows most recent purchase + 3 cheapest historical vendors per product.
+                        </span>
                     </div>
 
                     {{-- ── Odoo vendor master data (embedded for auto-fill) ── --}}
@@ -355,8 +358,7 @@
                                     <i class="bi bi-tools me-1"></i>Auto-isi dari Supplier Master
                                     <em>(opsional — ketik manual di bawah)</em>
                                 </label>
-                                <select class="form-select form-select-sm odoo-autofill"
-                                    onchange="autoFill(${idx}, this.value)">
+                                <select class="form-select form-select-sm odoo-autofill">
                                     <option value="">— Pilih supplier dari Odoo —</option>
                                     ${ODOO_VENDORS.map(v =>
                                         `<option value="${v.id}">${v.name}</option>`
@@ -429,13 +431,29 @@
                         </div>`;
 
                             container.appendChild(card);
+                            // Init Tom Select on the Odoo supplier dropdown
+                            const tsEl = card.querySelector('.odoo-autofill');
+                            if (tsEl && typeof TomSelect !== 'undefined') {
+                                new TomSelect(tsEl, {
+                                    maxOptions: 200,
+                                    searchField: ['text'],
+                                    placeholder: '— Pilih supplier dari Odoo —',
+                                    onChange(val) {
+                                        autoFill(idx, val);
+                                    },
+                                });
+                            }
                             addPriceColumn(idx);
                             refreshUI();
                         }
 
                         function removeVendorCard(idx) {
                             const card = document.querySelector(`.vendor-card[data-idx="${idx}"]`);
-                            if (card) card.remove();
+                            if (card) {
+                                const tsEl = card.querySelector('.odoo-autofill');
+                                if (tsEl && tsEl.tomselect) tsEl.tomselect.destroy();
+                                card.remove();
+                            }
                             removePriceColumn(idx);
                             refreshUI();
                         }
@@ -446,6 +464,21 @@
                             if (!v) return;
                             const card = document.querySelector(`.vendor-card[data-idx="${idx}"]`);
                             if (!card) return;
+
+                            // Block if another card already has this vendor
+                            const isDup = Array.from(document.querySelectorAll('.vendor-name-input'))
+                                .some(inp => {
+                                    const otherCard = inp.closest('.vendor-card');
+                                    return otherCard && parseInt(otherCard.dataset.idx) !== idx &&
+                                        inp.value.trim().toLowerCase() === v.name.trim().toLowerCase();
+                                });
+                            if (isDup) {
+                                alert(`"${v.name}" sudah dipilih di vendor lain. Pilih supplier yang berbeda.`);
+                                const tsEl = card.querySelector('.odoo-autofill');
+                                if (tsEl && tsEl.tomselect) tsEl.tomselect.clear(true);
+                                return;
+                            }
+
                             card.querySelector(`[name="vendors[${idx}][name]"]`).value = v.name;
                             card.querySelector(`[name="vendors[${idx}][alamat]"]`).value = buildAddress(v);
                             card.querySelector(`[name="vendors[${idx}][phone]"]`).value = v.phone || v.mobile || '';
@@ -457,6 +490,29 @@
                         function onVendorNameChange(idx, name) {
                             const titleEl = document.getElementById(`cardTitle_${idx}`);
                             if (titleEl) titleEl.textContent = name || `Vendor ${idx+1}`;
+
+                            // Duplicate check — highlight input if name already used
+                            const nameInput = document.querySelector(`[name="vendors[${idx}][name]"]`);
+                            if (nameInput && name.trim()) {
+                                const dup = Array.from(document.querySelectorAll('.vendor-name-input'))
+                                    .some(inp => {
+                                        const otherCard = inp.closest('.vendor-card');
+                                        return otherCard && parseInt(otherCard.dataset.idx) !== idx &&
+                                            inp.value.trim().toLowerCase() === name.trim().toLowerCase();
+                                    });
+                                nameInput.classList.toggle('is-invalid', dup);
+                                let fb = nameInput.nextElementSibling;
+                                if (!fb || !fb.classList.contains('ts-dup-msg')) {
+                                    if (dup) {
+                                        fb = document.createElement('div');
+                                        fb.className = 'invalid-feedback ts-dup-msg';
+                                        fb.textContent = 'Vendor ini sudah dipilih di card lain.';
+                                        nameInput.insertAdjacentElement('afterend', fb);
+                                    }
+                                } else {
+                                    fb.style.display = dup ? '' : 'none';
+                                }
+                            }
 
                             // Update price matrix column header
                             const th = document.getElementById(`priceColHeader_${idx}`);
@@ -525,10 +581,9 @@
                             const input = document.querySelector(`[name="vendor_prices[${rowIdx}][prices][${vendorIdx}]"]`);
                             if (input) {
                                 input.disabled = cb.checked;
-                                if (cb.checked) {
-                                    input.value = 0;
-                                }
+                                if (cb.checked) input.value = 0;
                             }
+                            refreshRecommendation();
                         }
 
                         function refreshRecommendDropdown() {
@@ -544,6 +599,90 @@
                                     dropdown.appendChild(opt);
                                 }
                             });
+                            refreshRecommendation();
+                        }
+
+                        function refreshRecommendation() {
+                            const hint = document.getElementById('vendorRecommendHint');
+                            if (!hint) return;
+
+                            const headers = document.querySelectorAll('#priceMatrixHeader th[id^="priceColHeader_"]');
+                            if (headers.length < 1) {
+                                hint.style.display = 'none';
+                                return;
+                            }
+
+                            const vendorIndices = Array.from(headers).map(th =>
+                                parseInt(th.id.replace('priceColHeader_', '')));
+                            const totals = {};
+                            vendorIndices.forEach(idx => totals[idx] = 0);
+
+                            const rows = document.querySelectorAll('#priceMatrixBody tr[data-row]');
+                            if (rows.length === 0) {
+                                hint.style.display = 'none';
+                                return;
+                            }
+
+                            rows.forEach(row => {
+                                const rowIdx = row.dataset.row;
+                                const qtyEl = row.querySelector(`[name="vendor_prices[${rowIdx}][qty]"]`);
+                                const qty = qtyEl ? (parseFloat(qtyEl.value) || 1) : 1;
+
+                                vendorIndices.forEach(idx => {
+                                    if (totals[idx] === Infinity) return;
+                                    const cb = document.getElementById(`tj_${rowIdx}_${idx}`);
+                                    if (cb && cb.checked) {
+                                        totals[idx] = Infinity;
+                                        return;
+                                    }
+                                    const priceInput = document.querySelector(
+                                        `[name="vendor_prices[${rowIdx}][prices][${idx}]"]`);
+                                    const val = priceInput ? parseFloat(priceInput.value) : 0;
+                                    if (val > 0) totals[idx] += val * qty;
+                                });
+                            });
+
+                            const getName = idx => {
+                                const inp = document.querySelector(`[name="vendors[${idx}][name]"]`);
+                                return (inp && inp.value.trim()) ? inp.value.trim() : `Vendor ${idx + 1}`;
+                            };
+                            const fmt = n => 'IDR\u00a0' + Math.round(n).toLocaleString('id-ID');
+
+                            const valid = vendorIndices.filter(idx => totals[idx] !== Infinity && totals[idx] > 0);
+                            if (valid.length === 0) {
+                                hint.style.display = 'none';
+                                return;
+                            }
+
+                            const sorted = [...valid].sort((a, b) => totals[a] - totals[b]);
+                            const bestIdx = sorted[0];
+
+                            let html = `<div class="alert alert-success py-2 px-3 mb-0 d-flex align-items-start gap-2">
+                                <i class="bi bi-lightbulb-fill text-warning fs-5 mt-1 flex-shrink-0"></i>
+                                <div><strong>Rekomendasi: ${getName(bestIdx)}</strong>
+                                &mdash; Total ${fmt(totals[bestIdx])}`;
+
+                            if (sorted.length > 1) {
+                                const others = sorted.slice(1).map(idx => {
+                                    if (totals[idx] === Infinity)
+                                        return `<em>${getName(idx)}: Tidak Jual</em>`;
+                                    const diff = totals[idx] - totals[bestIdx];
+                                    return `${getName(idx)}: ${fmt(totals[idx])}` +
+                                        ` <span class="text-danger fw-semibold">(+${fmt(diff)})</span>`;
+                                });
+                                html += `<br><small class="text-muted">vs ${others.join(' &nbsp;&middot;&nbsp; ')}</small>`;
+                            }
+
+                            // Tidak Jual vendors
+                            const cantSupply = vendorIndices.filter(idx => totals[idx] === Infinity);
+                            if (cantSupply.length > 0) {
+                                html += `<br><small class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>` +
+                                    `Tidak dapat supply: ${cantSupply.map(getName).join(', ')}</small>`;
+                            }
+
+                            html += `</div></div>`;
+                            hint.innerHTML = html;
+                            hint.style.display = '';
                         }
 
                         function refreshUI() {
@@ -555,14 +694,25 @@
 
                             document.getElementById('addVendorBtn').disabled = n >= 10;
                             document.getElementById('clvpSubmitBtn').disabled = n < 3;
-                            refreshRecommendDropdown();
+                            refreshRecommendDropdown(); // also calls refreshRecommendation
                         }
+
+                        // Re-calculate recommendation on every price input change
+                        document.getElementById('clvpForm').addEventListener('input', e => {
+                            if (e.target.classList.contains('price-input')) refreshRecommendation();
+                        });
 
                         document.getElementById('clvpForm').addEventListener('submit', function(e) {
                             const cards = document.querySelectorAll('.vendor-card');
                             if (cards.length < 3 || cards.length > 10) {
                                 e.preventDefault();
                                 alert('Harap tambahkan minimal 3 dan maksimal 10 vendor.');
+                                return;
+                            }
+                            // Block submit if any duplicate vendor names
+                            if (document.querySelector('.vendor-name-input.is-invalid')) {
+                                e.preventDefault();
+                                alert('Terdapat nama vendor yang sama. Harap gunakan vendor yang berbeda.');
                                 return;
                             }
                             // Re-enable any disabled price inputs so they POST as 0
@@ -987,3 +1137,11 @@
     @endif
 
 @endsection
+
+@push('styles')
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+@endpush
+
+@push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+@endpush
