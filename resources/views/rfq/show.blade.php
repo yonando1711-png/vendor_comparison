@@ -398,15 +398,22 @@
                                     <label class="form-label small fw-semibold mb-1">Ketersediaan</label>
                                     <div class="d-flex gap-3 mt-1">
                                         <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="radio"
-                                                name="vendors[${idx}][availability]" value="ready" id="avail_ready_${idx}">
+                                            <input class="form-check-input avail-radio" type="radio"
+                                                name="vendors[${idx}][availability]" value="ready" id="avail_ready_${idx}"
+                                                onchange="toggleIndentDuration(${idx})">
                                             <label class="form-check-label small" for="avail_ready_${idx}">Ready</label>
                                         </div>
                                         <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="radio"
-                                                name="vendors[${idx}][availability]" value="indent" id="avail_indent_${idx}">
+                                            <input class="form-check-input avail-radio" type="radio"
+                                                name="vendors[${idx}][availability]" value="indent" id="avail_indent_${idx}"
+                                                onchange="toggleIndentDuration(${idx})">
                                             <label class="form-check-label small" for="avail_indent_${idx}">Indent</label>
                                         </div>
+                                    </div>
+                                    <div id="indent_dur_wrap_${idx}" style="display:none; margin-top:4px;">
+                                        <input type="text" class="form-control form-control-sm"
+                                            name="vendors[${idx}][indent_duration]"
+                                            placeholder="e.g., 2 minggu, 1 bulan">
                                     </div>
                                 </div>
                                 <div class="col-md-3">
@@ -445,6 +452,12 @@
                             }
                             addPriceColumn(idx);
                             refreshUI();
+                        }
+
+                        function toggleIndentDuration(idx) {
+                            const rb = document.querySelector(`[name="vendors[${idx}][availability]"]:checked`);
+                            const wrap = document.getElementById(`indent_dur_wrap_${idx}`);
+                            if (wrap) wrap.style.display = (rb && rb.value === 'indent') ? '' : 'none';
                         }
 
                         function removeVendorCard(idx) {
@@ -777,7 +790,7 @@
                                     const idx = vendorCount - 1;
                                     const card = document.querySelectorAll('.vendor-card')[idx];
                                     const fields = ['name', 'alamat', 'phone', 'pic',
-                                        'term_of_payment', 'tax_info', 'discount', 'other_terms'
+                                        'term_of_payment', 'tax_info', 'discount', 'other_terms', 'indent_duration'
                                     ];
                                     fields.forEach(f => {
                                         const el = card.querySelector(`[name="vendors[${idx}][${f}]"]`);
@@ -788,6 +801,7 @@
                                             `[name="vendors[${idx}][availability]"][value="${v['availability']}"]`);
                                         if (rb) rb.checked = true;
                                     }
+                                    toggleIndentDuration(idx);
                                     // sync recommended dropdown
                                     const nameInp = card.querySelector('.vendor-name-input');
                                     if (nameInp) nameInp.dispatchEvent(new Event('input'));
@@ -837,7 +851,7 @@
                                     const idx = vendorCount - 1;
                                     const card = document.querySelectorAll('.vendor-card')[idx];
                                     const fields = ['name', 'alamat', 'phone', 'pic',
-                                        'term_of_payment', 'tax_info', 'discount', 'other_terms'
+                                        'term_of_payment', 'tax_info', 'discount', 'other_terms', 'indent_duration'
                                     ];
                                     fields.forEach(f => {
                                         const el = card.querySelector(`[name="vendors[${idx}][${f}]"]`);
@@ -848,6 +862,7 @@
                                             `[name="vendors[${idx}][availability]"][value="${v['availability']}"]`);
                                         if (rb) rb.checked = true;
                                     }
+                                    toggleIndentDuration(idx);
                                     const nameInp = card.querySelector('.vendor-name-input');
                                     if (nameInp) nameInp.dispatchEvent(new Event('input'));
                                 });
@@ -919,8 +934,10 @@
             <div class="product-block">
                 <div class="card">
                     <div class="card-header py-2 d-flex align-items-center gap-3">
-                        <span class="product-name">
-                            <i class="bi bi-box-seam me-1 text-muted"></i>{{ $productName }}
+                        <span class="product-name d-flex align-items-center gap-2">
+                            <i class="bi bi-box-seam text-muted"></i>
+                            <span class="badge bg-secondary">{{ $productName }}</span>
+                            {{ $line['name'] }}
                         </span>
                         <span class="badge bg-light text-dark border">
                             {{ $line['product_qty'] }} {{ $uom }}

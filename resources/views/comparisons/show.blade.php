@@ -12,22 +12,6 @@
         </ol>
     </nav>
 
-    {{-- Flash messages --}}
-    @if (session('success'))
-        <div class="alert alert-success alert-dismissible fade show d-flex align-items-center gap-2" role="alert">
-            <i class="bi bi-check-circle-fill"></i>
-            <span>{{ session('success') }}</span>
-            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-    @if (session('error'))
-        <div class="alert alert-danger alert-dismissible fade show d-flex align-items-center gap-2" role="alert">
-            <i class="bi bi-exclamation-triangle-fill"></i>
-            <span>{{ session('error') }}</span>
-            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
     {{-- Prominent rejection notice for creators --}}
     @if ($comparison->isRejected() && Auth::user()->isCreator())
         <div class="alert alert-danger d-flex gap-3 align-items-start mb-4">
@@ -250,6 +234,35 @@
                             </div>
                         </div>
                     @endif
+
+                    {{-- Post to Odoo card (only when approved) --}}
+                    @if ($comparison->isApproved())
+                        <div class="card mt-3 {{ $comparison->odoo_synced_at ? 'border-success' : 'border-primary' }}">
+                            <div
+                                class="card-header py-2 {{ $comparison->odoo_synced_at ? 'bg-success' : 'bg-primary' }} text-white">
+                                <h6 class="mb-0"><i class="bi bi-cloud me-2"></i>Odoo Integration</h6>
+                            </div>
+                            <div class="card-body">
+                                @if ($comparison->odoo_synced_at)
+                                    <div class="d-flex align-items-center gap-2 text-success">
+                                        <i class="bi bi-cloud-check-fill fs-4"></i>
+                                        <div>
+                                            <div class="fw-semibold small">Posted to Odoo</div>
+                                            <div class="text-muted small">
+                                                {{ $comparison->odoo_synced_at->format('d M Y H:i') }}</div>
+                                        </div>
+                                    </div>
+                                @else
+                                    <p class="text-muted small mb-3">Attach the CLVP PDF to the Odoo RFQ and post an
+                                        approval note to its chatter.</p>
+                                    <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal"
+                                        data-bs-target="#odooPostModal">
+                                        <i class="bi bi-cloud-upload me-2"></i>Post to Odoo
+                                    </button>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
                 </div>
 
                 {{-- ─── Right column: RFQ + vendor comparison data ────────── --}}
@@ -334,81 +347,184 @@
                                 $allPrices = array_filter($allPrices, fn($p) => $p > 0);
                                 $bestPrice = !empty($allPrices) ? min($allPrices) : null;
                                 $worstPrice = !empty($allPrices) ? max($allPrices) : null;
-                                $sortedRows = array_values($vendorRows);
-                                usort($sortedRows, fn($a, $b) => $a['price_unit'] <=> $b['price_unit']);
+                                $rfqVendorNm = is_array($rfq['partner_id']) ? $rfq['partner_id'][1] : '—';
+                                $otherRows = array_values(
+                                    array_filter(array_values($vendorRows), fn($r) => $r['vendor_id'] !== $rfqVendorId),
+                                );
+                                $byDate = $otherRows;
+                                usort($byDate, fn($a, $b) => strtotime($b['date']) <=> strtotime($a['date']));
+                                $mostRecentRow = $byDate[0] ?? null;
+                                $byPrice = $otherRows;
+                                usort($byPrice, fn($a, $b) => $a['price_unit'] <=> $b['price_unit']);
+                                $cheapRows = array_slice(
+                                    array_values(
+                                        array_filter(
+                                            $byPrice,
+                                            fn($r) => !$mostRecentRow ||
+                                                $r['vendor_id'] !== $mostRecentRow['vendor_id'],
+                                        ),
+                                    ),
+                                    0,
+                                    3,
+                                );
+                                $totalHistoryCount = count($otherRows);
                             @endphp
                             <div class="card mb-3">
-                                <div class="card-header py-2 d-flex align-items-center gap-2">
+                                <div class="card-header py-2 d-flex align-items-center gap-2 flex-wrap">
                                     <i class="bi bi-box-seam text-muted"></i>
-                                    <span class="fw-semibold">{{ $productName }}</span>
-                                    <span class="badge bg-light text-dark border ms-1">{{ $line['product_qty'] }}
+                                    <span class="badge bg-secondary">{{ $productName }}</span>
+                                    <span class="fw-semibold">{{ $line['name'] }}</span>
+                                    <span class="badge bg-light text-dark border">{{ $line['product_qty'] }}
                                         {{ $uom }}</span>
+                                    <span class="ms-auto text-muted small">
+                                        RFQ Unit Price:&nbsp;
+                                        <strong @class([
+                                            'text-success' =>
+                                                $bestPrice !== null &&
+                                                $line['price_unit'] == $bestPrice &&
+                                                count($allPrices) > 1,
+                                            'text-danger' =>
+                                                $worstPrice !== null &&
+                                                $line['price_unit'] == $worstPrice &&
+                                                $bestPrice !== $worstPrice &&
+                                                count($allPrices) > 1,
+                                        ])>
+                                            {{ $currency }} {{ number_format($line['price_unit'], 2, ',', '.') }}
+                                        </strong>
+                                    </span>
                                 </div>
                                 <div class="card-body p-0">
-                                    <table class="table table-bordered table-sm align-middle mb-0">
-                                        <thead>
-                                            <tr>
-                                                <th class="ps-3">Vendor</th>
-                                                <th class="text-center">Unit Price</th>
-                                                <th>Last PO</th>
-                                                <th class="text-center">Note</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @php
-                                                $isCurrentBest =
-                                                    $bestPrice !== null &&
-                                                    $line['price_unit'] == $bestPrice &&
-                                                    count($allPrices) > 1;
-                                                $isCurrentWorst =
-                                                    $worstPrice !== null &&
-                                                    $line['price_unit'] == $worstPrice &&
-                                                    $bestPrice !== $worstPrice;
-                                                $rowClass = $isCurrentBest
-                                                    ? 'price-best'
-                                                    : ($isCurrentWorst
-                                                        ? 'price-worst'
-                                                        : 'price-current');
-                                            @endphp
-                                            <tr class="{{ $rowClass }}">
-                                                <td class="ps-3 fw-semibold">
-                                                    <i class="bi bi-star-fill text-warning me-1"></i>
-                                                    {{ is_array($rfq['partner_id']) ? $rfq['partner_id'][1] : '—' }}
-                                                </td>
-                                                <td class="text-center fw-bold">{{ $currency }}
-                                                    {{ number_format($line['price_unit'], 2, ',', '.') }}</td>
-                                                <td class="text-muted">{{ $rfq['name'] }}</td>
-                                                <td class="text-center"><span class="badge bg-warning text-dark">Current
-                                                        RFQ</span></td>
-                                            </tr>
-                                            @foreach ($sortedRows as $row)
-                                                @if ($row['vendor_id'] === $rfqVendorId)
-                                                    @continue
-                                                @endif
-                                                @php
-                                                    $isBest = $bestPrice !== null && $row['price_unit'] == $bestPrice;
-                                                    $isWorst =
-                                                        $worstPrice !== null &&
-                                                        $row['price_unit'] == $worstPrice &&
-                                                        $bestPrice !== $worstPrice;
-                                                @endphp
-                                                <tr
-                                                    class="{{ $isBest ? 'price-best' : ($isWorst ? 'price-worst' : '') }}">
-                                                    <td class="ps-3">{{ $row['vendor_name'] }}</td>
-                                                    <td class="text-center">{{ $currency }}
-                                                        {{ number_format($row['price_unit'], 2, ',', '.') }}</td>
-                                                    <td class="text-muted small">{{ $row['po_name'] }}</td>
-                                                    <td class="text-center">
-                                                        @if ($isBest)
-                                                            <span class="badge bg-success">Best</span>
-                                                        @elseif($isWorst)
-                                                            <span class="badge bg-danger">Highest</span>
-                                                        @endif
-                                                    </td>
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-sm align-middle mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th class="ps-3">Vendor</th>
+                                                    <th class="text-center">Unit Price</th>
+                                                    <th class="text-center">Qty</th>
+                                                    <th class="text-center">UoM</th>
+                                                    <th>Last PO</th>
+                                                    <th>Last Purchase Date</th>
+                                                    <th class="text-center">Note</th>
                                                 </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
+                                            </thead>
+                                            <tbody>
+                                                @php
+                                                    $isCurrentBest =
+                                                        $bestPrice !== null &&
+                                                        $line['price_unit'] == $bestPrice &&
+                                                        count($allPrices) > 1;
+                                                    $isCurrentWorst =
+                                                        $worstPrice !== null &&
+                                                        $line['price_unit'] == $worstPrice &&
+                                                        $bestPrice !== $worstPrice;
+                                                    $currentClass = 'price-current';
+                                                    if ($isCurrentBest) {
+                                                        $currentClass = 'price-best';
+                                                    } elseif ($isCurrentWorst) {
+                                                        $currentClass = 'price-worst';
+                                                    }
+                                                @endphp
+                                                <tr class="{{ $currentClass }}">
+                                                    <td class="ps-3 fw-semibold">
+                                                        <i
+                                                            class="bi bi-star-fill text-warning me-1"></i>{{ $rfqVendorNm }}
+                                                    </td>
+                                                    <td class="text-center fw-bold">{{ $currency }}
+                                                        {{ number_format($line['price_unit'], 2, ',', '.') }}</td>
+                                                    <td class="text-center">{{ $line['product_qty'] }}</td>
+                                                    <td class="text-center">{{ $uom }}</td>
+                                                    <td class="text-muted">{{ $rfq['name'] }}</td>
+                                                    <td class="text-muted">
+                                                        {{ \Carbon\Carbon::parse($rfq['date_order'])->format('d M Y') }}
+                                                    </td>
+                                                    <td class="text-center"><span
+                                                            class="badge bg-warning text-dark">Current RFQ</span></td>
+                                                </tr>
+
+                                                @if ($mostRecentRow)
+                                                    @php $isBest = $bestPrice !== null && $mostRecentRow['price_unit'] == $bestPrice; @endphp
+                                                    <tr class="table-info" style="border-left:3px solid #0d6efd;">
+                                                        <td class="ps-3 fw-semibold">{{ $mostRecentRow['vendor_name'] }}
+                                                        </td>
+                                                        <td class="text-center fw-semibold">
+                                                            {{ $currency }}
+                                                            {{ number_format($mostRecentRow['price_unit'], 2, ',', '.') }}
+                                                            @if ($isBest)
+                                                                <i class="bi bi-check-circle-fill text-success ms-1"
+                                                                    title="Best Price"></i>
+                                                            @endif
+                                                        </td>
+                                                        <td class="text-center">{{ $mostRecentRow['product_qty'] }}</td>
+                                                        <td class="text-center">{{ $mostRecentRow['uom'] }}</td>
+                                                        <td class="text-muted small">{{ $mostRecentRow['po_name'] }}</td>
+                                                        <td class="fw-semibold">
+                                                            {{ \Carbon\Carbon::parse($mostRecentRow['date'])->format('d M Y H:i') }}
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <span class="badge bg-primary">Latest Purchase</span>
+                                                            @if ($isBest)
+                                                                <span class="badge bg-success">Best Price</span>
+                                                            @endif
+                                                        </td>
+                                                    </tr>
+                                                @endif
+
+                                                @foreach ($cheapRows as $row)
+                                                    @php
+                                                        $isBest =
+                                                            $bestPrice !== null && $row['price_unit'] == $bestPrice;
+                                                        $isWorst =
+                                                            $worstPrice !== null &&
+                                                            $row['price_unit'] == $worstPrice &&
+                                                            $bestPrice !== $worstPrice;
+                                                    @endphp
+                                                    <tr
+                                                        class="{{ $isBest ? 'price-best' : ($isWorst ? 'price-worst' : '') }}">
+                                                        <td class="ps-3">{{ $row['vendor_name'] }}</td>
+                                                        <td class="text-center">
+                                                            {{ $currency }}
+                                                            {{ number_format($row['price_unit'], 2, ',', '.') }}
+                                                            @if ($isBest)
+                                                                <i class="bi bi-check-circle-fill text-success ms-1"></i>
+                                                            @elseif ($isWorst)
+                                                                <i class="bi bi-arrow-up-circle-fill text-danger ms-1"></i>
+                                                            @endif
+                                                        </td>
+                                                        <td class="text-center">{{ $row['product_qty'] }}</td>
+                                                        <td class="text-center">{{ $row['uom'] }}</td>
+                                                        <td class="text-muted small">{{ $row['po_name'] }}</td>
+                                                        <td class="text-muted">
+                                                            {{ \Carbon\Carbon::parse($row['date'])->format('d M Y H:i') }}
+                                                        </td>
+                                                        <td class="text-center">
+                                                            @if ($isBest)
+                                                                <span class="badge bg-success">Best Price</span>
+                                                            @elseif ($isWorst)
+                                                                <span class="badge bg-danger">Highest</span>
+                                                            @endif
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+
+                                                @if (!$mostRecentRow && empty($cheapRows))
+                                                    <tr>
+                                                        <td colspan="7" class="text-center text-muted py-3 small">
+                                                            <i class="bi bi-clock-history me-1"></i>No purchase history
+                                                            from other vendors.
+                                                        </td>
+                                                    </tr>
+                                                @elseif ($totalHistoryCount > 4)
+                                                    <tr>
+                                                        <td colspan="7"
+                                                            class="text-center text-muted py-2 small fst-italic">
+                                                            Showing latest purchase + 3 cheapest of
+                                                            {{ $totalHistoryCount }} vendors in history.
+                                                        </td>
+                                                    </tr>
+                                                @endif
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         @endforeach
@@ -432,19 +548,6 @@
                 <button class="btn btn-outline-secondary btn-sm" onclick="window.print()">
                     <i class="bi bi-printer me-1"></i>Print
                 </button>
-                @if ($comparison->isApproved())
-                    @if ($comparison->odoo_synced_at)
-                        <span class="btn btn-sm btn-success disabled"
-                            title="Synced {{ $comparison->odoo_synced_at->diffForHumans() }}">
-                            <i class="bi bi-cloud-check-fill me-1"></i>Posted to Odoo
-                        </span>
-                    @else
-                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal"
-                            data-bs-target="#odooPostModal">
-                            <i class="bi bi-cloud-upload me-1"></i>Post to Odoo
-                        </button>
-                    @endif
-                @endif
             </div>
 
             {{-- Post to Odoo modal --}}
@@ -471,7 +574,8 @@
                                     <div class="bg-light border rounded p-3 mb-3 small">
                                         <div class="fw-semibold mb-1 text-muted">Auto-generated summary:</div>
                                         <div>✅ CLVP Approved — Recommended:
-                                            <strong>{{ $comparison->selected_vendor }}</strong></div>
+                                            <strong>{{ $comparison->selected_vendor }}</strong>
+                                        </div>
                                         <div>Approved by: <strong>{{ $comparison->manager->name ?? '—' }}</strong>
                                             on {{ $comparison->manager_approved_at?->format('d M Y') }}</div>
                                         <div>Submitted by: <strong>{{ $comparison->creator->name ?? '—' }}</strong></div>
@@ -514,11 +618,8 @@
 
                 <div class="d-flex align-items-start mb-3 gap-4">
                     {{-- Logo area --}}
-                    <div
-                        style="border:2px solid #000; padding:6px 14px; font-size:18px; font-weight:900; color:#c00; letter-spacing:2px; min-width:90px; text-align:center;">
-                        HARENT
-                        <div style="font-size:7px; font-weight:normal; color:#555; letter-spacing:0;">hartono rent car
-                        </div>
+                    <div style="min-width:90px;">
+                        <img src="{{ asset('logo.png') }}" style="height:55px; max-width:140px; object-fit:contain;">
                     </div>
 
                     {{-- Category checkboxes --}}
@@ -619,19 +720,41 @@
                                     @php
                                         $price = $row['prices'][$vi] ?? null;
                                         $isRec = ($v['name'] ?? '') === $comparison->selected_vendor;
+                                        preg_match('/[\d.]+/', $v['discount'] ?? '', $dm);
+                                        $dRate = isset($dm[0]) ? (float) $dm[0] / 100 : 0;
+                                        $discountedPrice = $price && $dRate > 0 ? (float) $price * (1 - $dRate) : null;
                                     @endphp
                                     <td
-                                        style="border:1px solid #000; padding:4px 6px; text-align:right;
-                                    {{ $isRec ? 'background:#f0fff4;' : '' }}">
+                                        style="border:1px solid #000; padding:4px 6px; text-align:right; {{ $isRec ? 'background:#f0fff4;' : '' }}">
                                         @if ($price === null || $price === '' || $price == 0)
                                             <span style="color:#888; font-style:italic;">Tidak jual</span>
                                         @else
-                                            {{ $currency }}{{ number_format((float) $price, 0, ',', '.') }}
+                                            @php $displayPrice = $dRate > 0 ? (float)$price * (1 - $dRate) : (float)$price; @endphp
+                                            {{ $currency }}{{ number_format($displayPrice, 0, ',', '.') }}
                                         @endif
                                     </td>
                                 @endforeach
                             </tr>
                         @endforeach
+
+                        {{-- Disc row: right after last product, before spacers --}}
+                        @if (collect($vendors)->filter(fn($v) => !empty($v['discount']))->count() > 0)
+                            <tr>
+                                <td style="border:1px solid #000; padding:4px 6px;"></td>
+                                <td style="border:1px solid #000;"></td>
+                                <td style="border:1px solid #000;"></td>
+                                <td style="border:1px solid #000;"></td>
+                                <td style="border:1px solid #000;"></td>
+                                <td style="border:1px solid #000;"></td>
+                                @foreach ($vendors as $v)
+                                    @php $isRec = ($v['name'] ?? '') === $comparison->selected_vendor; @endphp
+                                    <td
+                                        style="border:1px solid #000; padding:4px 6px; text-align:center; font-size:10px; font-weight:bold; color:#c0392b; {{ $isRec ? 'background:#f0fff4;' : '' }}">
+                                        {{ !empty($v['discount']) ? 'Disc ' . $v['discount'] : '' }}
+                                    </td>
+                                @endforeach
+                            </tr>
+                        @endif
 
                         {{-- Empty spacer rows for aesthetic (like original form) --}}
                         @for ($i = 0; $i < max(0, 6 - count($vpRows)); $i++)
@@ -660,20 +783,19 @@
                             @foreach ($vendors as $vi => $v)
                                 @php
                                     $vTotal = 0;
-                                    $hasAll = true;
+                                    $vTotalDisc = 0;
+                                    preg_match('/[\d.]+/', $v['discount'] ?? '', $dm);
+                                    $dRate = isset($dm[0]) ? (float) $dm[0] / 100 : 0;
                                     foreach ($vpRows as $row) {
-                                        $p = $row['prices'][$vi] ?? 0;
-                                        if (!$p) {
-                                            $hasAll = false;
-                                        }
-                                        $vTotal += (float) ($p ?? 0);
+                                        $p = (float) ($row['prices'][$vi] ?? 0);
+                                        $vTotal += $p;
+                                        $vTotalDisc += $p * (1 - $dRate);
                                     }
                                     $isRec = ($v['name'] ?? '') === $comparison->selected_vendor;
                                 @endphp
                                 <td
-                                    style="border:1px solid #000; padding:4px 6px; text-align:right; font-weight:bold;
-                                {{ $isRec ? 'background:#f0fff4;' : '' }}">
-                                    {{ $currency }}{{ number_format($vTotal, 0, ',', '.') }}
+                                    style="border:1px solid #000; padding:4px 6px; text-align:right; font-weight:bold; {{ $isRec ? 'background:#f0fff4;' : '' }}">
+                                    {{ $currency }}{{ number_format($vTotalDisc, 0, ',', '.') }}
                                 </td>
                             @endforeach
                         </tr>
@@ -697,6 +819,11 @@
                                             {{ !empty($v['indent']) ? 'V' : '' }}
                                         </span> Indent / Kosong
                                     </div>
+                                    @if (!empty($v['indent_duration']))
+                                        <div style="font-size:9px; color:#555; margin-top:2px; padding-left:16px;">
+                                            {{ $v['indent_duration'] }}
+                                        </div>
+                                    @endif
                                 </td>
                             @endforeach
                         </tr>
@@ -737,20 +864,6 @@
                             @endforeach
                         </tr>
 
-                        {{-- Discount --}}
-                        @if (collect($vendors)->where('discount', '!=', '')->count() > 0)
-                            <tr>
-                                <td colspan="6" style="border:1px solid #000; padding:3px 6px;"></td>
-                                @foreach ($vendors as $v)
-                                    @php $isRec = ($v['name'] ?? '') === $comparison->selected_vendor; @endphp
-                                    <td
-                                        style="border:1px solid #000; padding:3px 6px; font-size:10px; {{ $isRec ? 'background:#f0fff4;' : '' }}">
-                                        {{ !empty($v['discount']) ? 'Disc ' . $v['discount'] : '' }}
-                                    </td>
-                                @endforeach
-                            </tr>
-                        @endif
-
                         {{-- Payment method --}}
                         @if (collect($vendors)->where('payment_method', '!=', '')->count() > 0)
                             <tr>
@@ -777,13 +890,13 @@
                     </div>
                     <div style="font-size:11px; text-align:right;">
                         Tgl {{ $comparison->created_at->format('d/m/y') }}<br>
-                        Dibuat oleh,<br><br><br>
+                        Dibuat oleh,<br><br><br><br><br>
                         ({{ $comparison->creator->name ?? '—' }})
                     </div>
                 </div>
 
                 {{-- If approved, show approval signatures --}}
-                @if ($comparison->isApproved())
+                {{-- @if ($comparison->isApproved())
                     <div class="mt-2 d-flex gap-5" style="font-size:11px;">
                         <div style="text-align:center;">
                             Disetujui Supervisor,<br><br><br>
@@ -796,7 +909,7 @@
                             <small>{{ $comparison->manager_approved_at?->format('d/m/Y') }}</small>
                         </div>
                     </div>
-                @endif
+                @endif --}}
             </div>{{-- end clvpDocument --}}
 
         </div>{{-- end tabClvp --}}

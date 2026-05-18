@@ -44,7 +44,9 @@ class ComparisonController extends Controller
      */
     public function store(Request $request)
     {
-        $this->authorize('create-comparison');
+        if (! Auth::user()->isCreator()) {
+            abort(403, 'Only staff/creators may submit a comparison.');
+        }
 
         $request->validate([
             'po_id'                    => ['required', 'integer'],

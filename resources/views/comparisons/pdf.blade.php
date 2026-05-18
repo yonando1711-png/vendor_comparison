@@ -178,8 +178,7 @@
 
     <div class="header-row">
         <div class="logo-box">
-            HARENT
-            <div class="logo-sub">hartono rent car</div>
+            <img src="{{ public_path('logo.png') }}" style="height:55px; max-width:140px; object-fit:contain;">
         </div>
         <div class="cat-row">
             @foreach ($catMap as $val => $lbl)
@@ -243,17 +242,40 @@
                         @php
                             $price = $row['prices'][$vi] ?? null;
                             $isRec = ($v['name'] ?? '') === $comparison->selected_vendor;
+                            preg_match('/[\d.]+/', $v['discount'] ?? '', $dm);
+                            $dRate = isset($dm[0]) ? (float) $dm[0] / 100 : 0;
+                            $discountedPrice = $price && $dRate > 0 ? (float) $price * (1 - $dRate) : null;
                         @endphp
                         <td class="text-right {{ $isRec ? 'rec-cell' : '' }}">
                             @if ($price === null || $price === '' || $price == 0)
                                 <span class="text-muted">Tidak jual</span>
                             @else
-                                {{ $currency }}{{ number_format((float) $price, 0, ',', '.') }}
+                                @php $displayPrice = $dRate > 0 ? (float)$price * (1 - $dRate) : (float)$price; @endphp
+                                {{ $currency }}{{ number_format($displayPrice, 0, ',', '.') }}
                             @endif
                         </td>
                     @endforeach
                 </tr>
             @endforeach
+
+            {{-- Disc row: right after last product, before spacers --}}
+            @if (collect($vendors)->filter(fn($v) => !empty($v['discount']))->count() > 0)
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    @foreach ($vendors as $v)
+                        @php $isRec = ($v['name'] ?? '') === $comparison->selected_vendor; @endphp
+                        <td class="text-center {{ $isRec ? 'rec-cell' : '' }}"
+                            style="font-size:9px; color:#c0392b; font-weight:bold;">
+                            {{ !empty($v['discount']) ? 'Disc ' . $v['discount'] : '' }}
+                        </td>
+                    @endforeach
+                </tr>
+            @endif
 
             {{-- Spacer rows --}}
             @for ($i = 0; $i < max(0, 6 - count($vpRows)); $i++)
@@ -280,13 +302,18 @@
                 @foreach ($vendors as $vi => $v)
                     @php
                         $vTotal = 0;
+                        $vTotalDisc = 0;
+                        preg_match('/[\d.]+/', $v['discount'] ?? '', $dm);
+                        $dRate = isset($dm[0]) ? (float) $dm[0] / 100 : 0;
                         foreach ($vpRows as $row) {
-                            $vTotal += (float) ($row['prices'][$vi] ?? 0);
+                            $p = (float) ($row['prices'][$vi] ?? 0);
+                            $vTotal += $p;
+                            $vTotalDisc += $p * (1 - $dRate);
                         }
                         $isRec = ($v['name'] ?? '') === $comparison->selected_vendor;
                     @endphp
                     <td class="text-right {{ $isRec ? 'rec-cell' : '' }}">
-                        {{ $currency }}{{ number_format($vTotal, 0, ',', '.') }}
+                        {{ $currency }}{{ number_format($vTotalDisc, 0, ',', '.') }}
                     </td>
                 @endforeach
             </tr>
@@ -300,6 +327,9 @@
                         <span class="checkbox">{{ ($v['availability'] ?? '') === 'ready' ? 'V' : '' }}</span> Ready<br>
                         <span class="checkbox">{{ ($v['availability'] ?? '') === 'indent' ? 'V' : '' }}</span>
                         Indent/Kosong
+                        @if (!empty($v['indent_duration']))
+                            <br><span style="font-size:8px; color:#555;">{{ $v['indent_duration'] }}</span>
+                        @endif
                     </td>
                 @endforeach
             </tr>
@@ -323,17 +353,6 @@
                 @endforeach
             </tr>
 
-            {{-- Discount --}}
-            @if (collect($vendors)->where('discount', '!=', '')->count() > 0)
-                <tr>
-                    <td colspan="6" style="font-size:9px;">Diskon</td>
-                    @foreach ($vendors as $v)
-                        @php $isRec = ($v['name'] ?? '') === $comparison->selected_vendor; @endphp
-                        <td class="{{ $isRec ? 'rec-cell' : '' }}" style="font-size:9px;">{{ $v['discount'] ?? '' }}
-                        </td>
-                    @endforeach
-                </tr>
-            @endif
         </tbody>
     </table>
 
@@ -346,12 +365,12 @@
         </div>
         <div style="text-align:right;">
             Tgl {{ $comparison->created_at->format('d/m/y') }}<br>
-            Dibuat oleh,<br><br><br>
+            Dibuat oleh,<br><br><br><br><br>
             ({{ $comparison->creator->name ?? '—' }})
         </div>
     </div>
 
-    @if ($comparison->isApproved())
+    {{-- @if ($comparison->isApproved())
         <div class="sig-row">
             <div class="sig-box">
                 Disetujui Supervisor,<br><br><br>
@@ -364,7 +383,7 @@
                 <small>{{ $comparison->manager_approved_at?->format('d/m/Y') }}</small>
             </div>
         </div>
-    @endif
+    @endif --}}
 
 </body>
 

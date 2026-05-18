@@ -62,7 +62,7 @@ class VendorComparison extends Model
 
     public function logs()
     {
-        return $this->hasMany(ComparisonLog::class)->orderBy('created_at');
+        return $this->hasMany(ComparisonLog::class, 'comparison_id')->orderBy('created_at');
     }
 
     // ── Editable check ─────────────────────────────────────
