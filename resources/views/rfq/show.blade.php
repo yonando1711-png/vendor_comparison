@@ -242,7 +242,10 @@
                                                     <tr data-row="{{ $lineIdx }}">
                                                         <td class="text-center">{{ $lineIdx + 1 }}</td>
                                                         <td>
-                                                            {{ $pName }}
+                                                            <div class="fw-semibold">{{ $pName }}</div>
+                                                            @if (!empty($line['name']) && $line['name'] !== $pName)
+                                                                <div class="text-muted small">{{ $line['name'] }}</div>
+                                                            @endif
                                                             <input type="hidden"
                                                                 name="vendor_prices[{{ $lineIdx }}][product_id]"
                                                                 value="{{ $line['product_id'][0] }}">
