@@ -96,6 +96,9 @@
                                     $vendorName = is_array($rfq['partner_id']) ? $rfq['partner_id'][1] : '';
                                     $currency = is_array($rfq['currency_id']) ? $rfq['currency_id'][1] : 'IDR';
                                 @endphp
+                                @if (($rfq['amount_total'] ?? 0) <= 250000)
+                                    @continue
+                                @endif
                                 <tr data-rfq-name="{{ strtolower($rfq['name']) }}"
                                     data-vendor="{{ strtolower($vendorName) }}"
                                     data-origin="{{ strtolower($rfq['origin'] ?? '') }}" data-state="{{ $rfq['state'] }}"

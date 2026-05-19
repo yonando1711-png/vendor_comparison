@@ -227,10 +227,6 @@
                                                         if (!is_array($line['product_id'])) {
                                                             continue;
                                                         }
-                                                        // Skip items whose line total is Rp 250,000 or below
-                                                        if (($line['price_unit'] * $line['product_qty']) <= 250000) {
-                                                            continue;
-                                                        }
                                                         $pName = $line['product_id'][1];
                                                         $pCode = $line['product_id'][0]; // use ID as code placeholder
                                                         $uom = is_array($line['product_uom'])
@@ -250,6 +246,9 @@
                                                             <input type="hidden"
                                                                 name="vendor_prices[{{ $lineIdx }}][product_name]"
                                                                 value="{{ $pName }}">
+                                                            <input type="hidden"
+                                                                name="vendor_prices[{{ $lineIdx }}][product_description]"
+                                                                value="{{ $line['name'] !== $pName ? $line['name'] : '' }}">
                                                             <input type="hidden"
                                                                 name="vendor_prices[{{ $lineIdx }}][qty]"
                                                                 value="{{ $line['product_qty'] }}">

@@ -233,7 +233,12 @@
             @foreach ($vpRows as $ri => $row)
                 <tr>
                     <td class="text-center">{{ $ri + 1 }}</td>
-                    <td>{{ $row['product_name'] ?? '' }}</td>
+                    <td>
+                        {{ $row['product_name'] ?? '' }}
+                        @if (!empty($row['product_description']))
+                            <div style="font-size:9px;color:#555;margin-top:2px;">{{ $row['product_description'] }}</div>
+                        @endif
+                    </td>
                     <td class="text-center text-muted" style="font-size:9px;"></td>
                     <td class="text-center">{{ $row['qty'] ?? '' }}</td>
                     <td class="text-center">{{ $row['uom'] ?? '' }}</td>
