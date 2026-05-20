@@ -832,16 +832,20 @@
                                 @php $isRec = ($v['name'] ?? '') === $comparison->selected_vendor; @endphp
                                 <td
                                     style="border:1px solid #000; padding:3px 6px; font-size:10px; {{ $isRec ? 'background:#f0fff4;' : '' }}">
+                                    @php
+                                        $isReady  = ($v['availability'] ?? '') === 'ready'  || !empty($v['ready']);
+                                        $isIndent = ($v['availability'] ?? '') === 'indent' || !empty($v['indent']);
+                                    @endphp
                                     <div style="display:flex; align-items:center; gap:4px; margin-bottom:2px;">
                                         <span
                                             style="display:inline-block; width:12px; height:12px; border:1px solid #000; text-align:center; line-height:11px; font-size:10px;">
-                                            {{ !empty($v['ready']) ? 'V' : '' }}
+                                            {{ $isReady ? 'V' : '' }}
                                         </span> Ready
                                     </div>
                                     <div style="display:flex; align-items:center; gap:4px;">
                                         <span
                                             style="display:inline-block; width:12px; height:12px; border:1px solid #000; text-align:center; line-height:11px; font-size:10px;">
-                                            {{ !empty($v['indent']) ? 'V' : '' }}
+                                            {{ $isIndent ? 'V' : '' }}
                                         </span> Indent / Kosong
                                     </div>
                                     @if (!empty($v['indent_duration']))
@@ -884,7 +888,8 @@
                                 @php $isRec = ($v['name'] ?? '') === $comparison->selected_vendor; @endphp
                                 <td
                                     style="border:1px solid #000; padding:3px 6px; font-size:10px; {{ $isRec ? 'background:#f0fff4;' : '' }}">
-                                    {{ $v['term_of_payment'] ?? '' }}
+                                    @php $top = $v['term_of_payment'] ?? ''; if (is_numeric(trim($top))) $top .= ' Hari'; @endphp
+                                    {{ $top }}
                                 </td>
                             @endforeach
                         </tr>

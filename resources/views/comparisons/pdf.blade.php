@@ -348,8 +348,12 @@
                 @foreach ($vendors as $v)
                     @php $isRec = ($v['name'] ?? '') === $comparison->selected_vendor; @endphp
                     <td class="{{ $isRec ? 'rec-cell' : '' }}" style="font-size:9px;">
-                        <span class="checkbox">{{ ($v['availability'] ?? '') === 'ready' ? 'V' : '' }}</span> Ready<br>
-                        <span class="checkbox">{{ ($v['availability'] ?? '') === 'indent' ? 'V' : '' }}</span>
+                        @php
+                            $isReady  = ($v['availability'] ?? '') === 'ready'  || !empty($v['ready']);
+                            $isIndent = ($v['availability'] ?? '') === 'indent' || !empty($v['indent']);
+                        @endphp
+                        <span class="checkbox">{{ $isReady ? 'V' : '' }}</span> Ready<br>
+                        <span class="checkbox">{{ $isIndent ? 'V' : '' }}</span>
                         Indent/Kosong
                         @if (!empty($v['indent_duration']))
                             <br><span style="font-size:8px; color:#555;">{{ $v['indent_duration'] }}</span>
@@ -373,7 +377,8 @@
                 @foreach ($vendors as $v)
                     @php $isRec = ($v['name'] ?? '') === $comparison->selected_vendor; @endphp
                     <td class="{{ $isRec ? 'rec-cell' : '' }}" style="font-size:9px;">
-                        {{ $v['term_of_payment'] ?? '' }}</td>
+                        @php $top = $v['term_of_payment'] ?? ''; if (is_numeric(trim($top))) $top .= ' Hari'; @endphp
+                        {{ $top }}</td>
                 @endforeach
             </tr>
 
