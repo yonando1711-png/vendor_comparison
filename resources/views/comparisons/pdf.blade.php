@@ -236,10 +236,11 @@
                     <td>
                         {{ $row['product_name'] ?? '' }}
                         @if (!empty($row['product_description']))
-                            <div style="font-size:9px;color:#555;margin-top:2px;">{{ $row['product_description'] }}</div>
+                            <div style="font-size:9px;color:#555;margin-top:2px;">{{ $row['product_description'] }}
+                            </div>
                         @endif
                     </td>
-                    <td class="text-center text-muted" style="font-size:9px;"></td>
+                    <td class="text-center text-muted" style="font-size:9px;">{{ $row['product_code'] ?? '' }}</td>
                     <td class="text-center">{{ $row['qty'] ?? '' }}</td>
                     <td class="text-center">{{ $row['uom'] ?? '' }}</td>
                     <td class="text-right">{{ number_format($row['pricelist_original'] ?? 0, 0, ',', '.') }}</td>

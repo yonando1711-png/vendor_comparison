@@ -228,7 +228,7 @@
                                                             continue;
                                                         }
                                                         $pName = $line['product_id'][1];
-                                                        $pCode = $line['product_id'][0]; // use ID as code placeholder
+                                                        $pCode = $line['product_code'] ?? '';
                                                         $uom = is_array($line['product_uom'])
                                                             ? $line['product_uom'][1]
                                                             : '';
@@ -246,6 +246,9 @@
                                                             <input type="hidden"
                                                                 name="vendor_prices[{{ $lineIdx }}][product_name]"
                                                                 value="{{ $pName }}">
+                                                            <input type="hidden"
+                                                                name="vendor_prices[{{ $lineIdx }}][product_code]"
+                                                                value="{{ $pCode }}">
                                                             <input type="hidden"
                                                                 name="vendor_prices[{{ $lineIdx }}][product_description]"
                                                                 value="{{ $line['name'] !== $pName ? $line['name'] : '' }}">

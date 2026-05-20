@@ -213,7 +213,35 @@ class OdooService
             ]
         );
 
-        return $lines ?? [];
+        if (empty($lines)) {
+            return [];
+        }
+
+        // Fetch default_code (internal reference) for each product
+        $productIds = array_filter(array_map(
+            fn($l) => is_array($l['product_id']) ? $l['product_id'][0] : null,
+            $lines
+        ));
+
+        if (!empty($productIds)) {
+            $products = $this->call(
+                'product.product',
+                'read',
+                [array_values($productIds)],
+                ['fields' => ['id', 'default_code']]
+            );
+            $codeMap = [];
+            foreach ($products ?? [] as $p) {
+                $codeMap[$p['id']] = $p['default_code'] ?: '';
+            }
+            foreach ($lines as &$line) {
+                $pid = is_array($line['product_id']) ? $line['product_id'][0] : null;
+                $line['product_code'] = $pid ? ($codeMap[$pid] ?? '') : '';
+            }
+            unset($line);
+        }
+
+        return $lines;
     }
 
     /**
