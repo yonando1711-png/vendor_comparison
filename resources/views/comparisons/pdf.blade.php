@@ -349,7 +349,7 @@
                     @php $isRec = ($v['name'] ?? '') === $comparison->selected_vendor; @endphp
                     <td class="{{ $isRec ? 'rec-cell' : '' }}" style="font-size:9px;">
                         @php
-                            $isReady  = ($v['availability'] ?? '') === 'ready'  || !empty($v['ready']);
+                            $isReady = ($v['availability'] ?? '') === 'ready' || !empty($v['ready']);
                             $isIndent = ($v['availability'] ?? '') === 'indent' || !empty($v['indent']);
                         @endphp
                         <span class="checkbox">{{ $isReady ? 'V' : '' }}</span> Ready<br>
@@ -377,7 +377,12 @@
                 @foreach ($vendors as $v)
                     @php $isRec = ($v['name'] ?? '') === $comparison->selected_vendor; @endphp
                     <td class="{{ $isRec ? 'rec-cell' : '' }}" style="font-size:9px;">
-                        @php $top = $v['term_of_payment'] ?? ''; if (is_numeric(trim($top))) $top .= ' Hari'; @endphp
+                        @php
+                            $top = $v['term_of_payment'] ?? '';
+                            if (is_numeric(trim($top))) {
+                                $top .= ' Hari';
+                            }
+                        @endphp
                         {{ $top }}</td>
                 @endforeach
             </tr>
