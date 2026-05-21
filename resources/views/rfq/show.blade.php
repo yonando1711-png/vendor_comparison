@@ -348,6 +348,8 @@
                             const card = document.createElement('div');
                             card.className = 'card mb-3 vendor-card';
                             card.dataset.idx = idx;
+                            const escHtml = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+                            const odooOptions = ODOO_VENDORS.map(v => `<option value="${v.id}">${escHtml(v.name)}${v.city ? ' - ' + escHtml(v.city) : ''}</option>`).join('');
                             card.innerHTML = `
                         <div class="card-header py-2 d-flex align-items-center gap-2"
                             style="background:#f8fafc;">
@@ -362,6 +364,13 @@
                         </div>
                         <div class="card-body">
                             <div class="row g-2">
+                                <div class="col-12">
+                                    <label class="form-label small fw-semibold mb-1">Cari Supplier dari Odoo <span class="text-muted fw-normal">(opsional, untuk auto-isi)</span></label>
+                                    <select class="form-select form-select-sm odoo-autofill">
+                                        <option value="">— Pilih supplier dari Odoo —</option>
+                                        ${odooOptions}
+                                    </select>
+                                </div>
                                 <div class="col-md-6">
                                     <label class="form-label small fw-semibold mb-1">Nama Calon Vendor <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control form-control-sm vendor-name-input"
