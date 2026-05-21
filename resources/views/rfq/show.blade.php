@@ -208,6 +208,18 @@
                                     <h6 class="fw-semibold mb-2">
                                         <i class="bi bi-grid-3x3-gap me-1"></i>Harga per Item per Vendor
                                     </h6>
+                                    @php
+                                        $totalLines   = count($rfq['lines'] ?? []);
+                                        $productLines = count(array_filter($rfq['lines'] ?? [], fn($l) => is_array($l['product_id'])));
+                                        $skipped      = $totalLines - $productLines;
+                                    @endphp
+                                    @if ($skipped > 0)
+                                        <div class="alert alert-info py-1 px-2 mb-2 small">
+                                            <i class="bi bi-info-circle me-1"></i>
+                                            Menampilkan <strong>{{ $productLines }}</strong> dari <strong>{{ $totalLines }}</strong> baris Odoo.
+                                            {{ $skipped }} baris lainnya adalah <em>section/catatan</em> tanpa produk, dilewati otomatis.
+                                        </div>
+                                    @endif
                                     <div class="table-responsive">
                                         <table class="table table-bordered table-sm align-middle" id="priceMatrix">
                                             <thead class="table-light">
