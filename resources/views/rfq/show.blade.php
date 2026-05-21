@@ -672,34 +672,45 @@
                                 const v = parseFloat(inp ? inp.value : 0);
                                 return v > 0 ? v : 0;
                             };
-                            const nameWithDisc = idx => {
-                                const d = getDisc(idx);
-                                return getName(idx) + (d > 0 ?
-                                    ` <span class="badge bg-success ms-1" style="font-size:.72em">${d}% off</span>` : '');
-                            };
                             const fmt = n => 'IDR\u00a0' + Math.round(n).toLocaleString('id-ID');
 
-                            const valid = vendorIndices.filter(idx => totals[idx] !== Infinity && totals[idx] > 0);
+                            // Effective total after discount
+                            const effective = {};
+                            vendorIndices.forEach(idx => {
+                                if (totals[idx] === Infinity) { effective[idx] = Infinity; return; }
+                                const d = getDisc(idx);
+                                effective[idx] = totals[idx] * (1 - d / 100);
+                            });
+
+                            const valid = vendorIndices.filter(idx => effective[idx] !== Infinity && effective[idx] > 0);
                             if (valid.length === 0) {
                                 hint.style.display = 'none';
                                 return;
                             }
 
-                            const sorted = [...valid].sort((a, b) => totals[a] - totals[b]);
+                            const sorted = [...valid].sort((a, b) => effective[a] - effective[b]);
                             const bestIdx = sorted[0];
+
+                            const fmtVendor = idx => {
+                                const d = getDisc(idx);
+                                const badge = d > 0 ? ` <span class="badge bg-success ms-1" style="font-size:.72em">${d}% off</span>` : '';
+                                const effPrice = fmt(effective[idx]);
+                                const origNote = d > 0
+                                    ? ` <span class="text-muted" style="font-size:.85em;text-decoration:line-through">${fmt(totals[idx])}</span>`
+                                    : '';
+                                return `${getName(idx)}${badge} ${origNote}${effPrice}`;
+                            };
 
                             let html = `<div class="alert alert-success py-2 px-3 mb-0 d-flex align-items-start gap-2">
                                 <i class="bi bi-lightbulb-fill text-warning fs-5 mt-1 flex-shrink-0"></i>
-                                <div><strong>Rekomendasi: ${nameWithDisc(bestIdx)}</strong>
-                                &mdash; Total ${fmt(totals[bestIdx])}`;
+                                <div><strong>Rekomendasi: ${fmtVendor(bestIdx)}</strong>`;
 
                             if (sorted.length > 1) {
                                 const others = sorted.slice(1).map(idx => {
                                     if (totals[idx] === Infinity)
                                         return `<em>${getName(idx)}: Tidak Jual</em>`;
-                                    const diff = totals[idx] - totals[bestIdx];
-                                    return `${nameWithDisc(idx)}: ${fmt(totals[idx])}` +
-                                        ` <span class="text-danger fw-semibold">(+${fmt(diff)})</span>`;
+                                    const diff = effective[idx] - effective[bestIdx];
+                                    return `${fmtVendor(idx)} <span class="text-danger fw-semibold">(+${fmt(diff)})</span>`;
                                 });
                                 html += `<br><small class="text-muted">vs ${others.join(' &nbsp;&middot;&nbsp; ')}</small>`;
                             }
