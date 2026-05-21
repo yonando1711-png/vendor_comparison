@@ -677,7 +677,10 @@
                             // Effective total after discount
                             const effective = {};
                             vendorIndices.forEach(idx => {
-                                if (totals[idx] === Infinity) { effective[idx] = Infinity; return; }
+                                if (totals[idx] === Infinity) {
+                                    effective[idx] = Infinity;
+                                    return;
+                                }
                                 const d = getDisc(idx);
                                 effective[idx] = totals[idx] * (1 - d / 100);
                             });
@@ -693,11 +696,12 @@
 
                             const fmtVendor = idx => {
                                 const d = getDisc(idx);
-                                const badge = d > 0 ? ` <span class="badge bg-success ms-1" style="font-size:.72em">${d}% off</span>` : '';
+                                const badge = d > 0 ? ` <span class="badge bg-success ms-1" style="font-size:.72em">${d}% off</span>` :
+                                    '';
                                 const effPrice = fmt(effective[idx]);
-                                const origNote = d > 0
-                                    ? ` <span class="text-muted" style="font-size:.85em;text-decoration:line-through">${fmt(totals[idx])}</span>`
-                                    : '';
+                                const origNote = d > 0 ?
+                                    ` <span class="text-muted" style="font-size:.85em;text-decoration:line-through">${fmt(totals[idx])}</span>` :
+                                    '';
                                 return `${getName(idx)}${badge} ${origNote}${effPrice}`;
                             };
 
