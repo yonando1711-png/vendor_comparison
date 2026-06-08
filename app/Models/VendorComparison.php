@@ -108,8 +108,13 @@ class VendorComparison extends Model
     }
     public function isCancellableBy(\App\Models\User $user): bool
     {
-        return $this->isApproved()
-            && ($user->isSupervisor() || $user->isManager());
+        if ($user->isSupervisor() && $this->isPendingManager()) {
+            return true;
+        }
+        if ($user->isManager() && $this->isApproved()) {
+            return true;
+        }
+        return false;
     }
 
     public function statusLabel(): string

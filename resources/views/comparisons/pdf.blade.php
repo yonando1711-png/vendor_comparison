@@ -414,6 +414,9 @@
             Dibuat oleh,<br><br><br><br><br>
             ({{ $comparison->creator->name ?? '—' }})
         </div>
+        <div style="text-align:right;">
+            SDP/FR/PCH/12, Rev.02
+        </div>
     </div>
 
     {{-- @if ($comparison->isApproved())
