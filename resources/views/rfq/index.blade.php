@@ -138,10 +138,17 @@
                                         @endif
                                     </td>
                                     <td class="text-center">
-                                        <a href="{{ route('rfq.show', $rfq['id']) }}"
-                                            class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-search me-1"></i>Compare
-                                        </a>
+                                        @if (Auth::user()->isViewer())
+                                            <a href="{{ route('rfq.show', $rfq['id']) }}"
+                                                class="btn btn-sm btn-outline-secondary">
+                                                <i class="bi bi-eye me-1"></i>View
+                                            </a>
+                                        @else
+                                            <a href="{{ route('rfq.show', $rfq['id']) }}"
+                                                class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-search me-1"></i>Compare
+                                            </a>
+                                        @endif
                                     </td>
                                 </tr>
                             @endforeach

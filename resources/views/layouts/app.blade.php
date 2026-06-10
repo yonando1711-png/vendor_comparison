@@ -140,18 +140,16 @@
                         </a>
                     </li>
                     @auth
-                        @if (!Auth::user()->isViewer())
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ route('rfq.index') }}">
-                                    <i class="bi bi-list-ul me-1"></i>Comparison List
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ route('comparisons.index') }}">
-                                    <i class="bi bi-check2-square me-1"></i>Approvals
-                                </a>
-                            </li>
-                        @endif
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('rfq.index') }}">
+                                <i class="bi bi-list-ul me-1"></i>Comparison List
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ route('comparisons.index') }}">
+                                <i class="bi bi-check2-square me-1"></i>Approvals
+                            </a>
+                        </li>
                         @if (Auth::user()->isAdmin())
                             <li class="nav-item">
                                 <a class="nav-link" href="{{ route('admin.users') }}">

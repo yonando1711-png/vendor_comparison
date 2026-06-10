@@ -680,6 +680,7 @@
         {{-- ════════════════════════════════════════════════════════ --}}
         <div class="tab-pane fade" id="tabClvp">
 
+            @if (!Auth::user()->isViewer())
             <div class="d-flex justify-content-end mb-3 gap-2">
                 <a href="{{ route('comparisons.pdf', $comparison) }}" target="_blank" class="btn btn-danger btn-sm">
                     <i class="bi bi-file-earmark-pdf me-1"></i>Download PDF
@@ -688,6 +689,7 @@
                     <i class="bi bi-printer me-1"></i>Print
                 </button>
             </div>
+            @endif
 
             {{-- Post to Odoo modal hidden --}}
             @if (false)

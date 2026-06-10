@@ -12,7 +12,7 @@ class AuthController extends Controller
         if (Auth::check()) {
             /** @var \App\Models\User $user */
             $user = Auth::user();
-            return redirect()->route($user->isViewer() ? 'rfq.list' : 'rfq.index');
+            return redirect()->route('rfq.index');
         }
 
         return view('auth.login');
@@ -29,7 +29,7 @@ class AuthController extends Controller
             $request->session()->regenerate();
             /** @var \App\Models\User $user */
             $user = Auth::user();
-            return redirect()->intended(route($user->isViewer() ? 'rfq.list' : 'rfq.index'));
+            return redirect()->intended(route('rfq.index'));
         }
 
         return back()->withErrors([
