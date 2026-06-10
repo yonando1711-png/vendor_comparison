@@ -130,7 +130,8 @@
                                     <td class="text-center">
                                         @if ($clvp)
                                             <a href="{{ route('comparisons.show', $clvp->id) }}"
-                                                class="badge text-decoration-none {{ $clvp->statusBadgeClass() }}">
+                                                class="badge text-decoration-none {{ $clvp->statusBadgeClass() }}"
+                                                @if($clvp->status === 'pending_procurement') style="background:#7c3aed" @endif>
                                                 {{ $clvp->statusLabel() }}
                                             </a>
                                         @else

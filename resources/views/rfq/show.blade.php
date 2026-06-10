@@ -317,11 +317,19 @@
                                     </div>
                                 </div>
 
+                                {{-- Auto-procurement warning banner (hidden by default) --}}
+                                <div id="procurementAutoAlert" class="alert mb-3 d-flex align-items-start gap-2" style="display:none!important; background:#f5f3ff; border:1.5px solid #7c3aed; color:#4c1d95">
+                                    <i class="bi bi-shield-exclamation fs-5 mt-1" style="color:#7c3aed; flex-shrink:0"></i>
+                                    <div>
+                                        <div class="fw-semibold">Persetujuan Procurement diperlukan secara otomatis</div>
+                                        <div class="small mt-1" id="procurementAutoReason"></div>
+                                    </div>
+                                </div>
+
                                 {{-- Procurement toggle --}}
                                 <div class="mb-3" id="procurementToggleSection">
                                     <div id="procurementToggleCard" class="border rounded p-3 d-flex align-items-center justify-content-between gap-3"
-                                        style="cursor:pointer; border-color:#dee2e6; background:#f8f9fa; transition: all .2s"
-                                        onclick="toggleProcurement()">
+                                        style="cursor:pointer; border-color:#dee2e6; background:#f8f9fa; transition: all .2s">
                                         <div class="d-flex align-items-center gap-2">
                                             <i class="bi bi-shield-check fs-5" id="procurementIcon" style="color:#6c757d"></i>
                                             <div>
@@ -340,11 +348,18 @@
                                     <i class="bi bi-send me-2"></i><span id="clvpSubmitLabel">Submit untuk Persetujuan Supervisor</span>
                                 </button>
 
+                                @php
+                                    $productsWithHistory = array_keys(array_filter($history, fn($h) => !empty($h)));
+                                @endphp
                                 <script>
                                     (function() {
-                                        let procurementOn = false;
-                                        window.toggleProcurement = function() {
-                                            procurementOn = !procurementOn;
+                                        // Product IDs that HAVE confirmed purchase history (Rule 1: empty = never bought)
+                                        const productsWithHistory = @json($productsWithHistory);
+
+                                        let manualOn  = false;
+                                        let autoOn    = false;
+
+                                        function applyProcurementState(on, locked, reasons) {
                                             const card   = document.getElementById('procurementToggleCard');
                                             const icon   = document.getElementById('procurementIcon');
                                             const label  = document.getElementById('procurementLabel');
@@ -352,13 +367,17 @@
                                             const badge  = document.getElementById('procurementBadge');
                                             const input  = document.getElementById('requiresProcurementInput');
                                             const btnLbl = document.getElementById('clvpSubmitLabel');
-                                            if (procurementOn) {
+                                            const alert  = document.getElementById('procurementAutoAlert');
+                                            const reason = document.getElementById('procurementAutoReason');
+
+                                            if (on) {
                                                 card.style.borderColor  = '#7c3aed';
                                                 card.style.background   = '#f5f3ff';
                                                 icon.style.color        = '#7c3aed';
-                                                icon.className          = 'bi bi-shield-check fs-5';
                                                 label.textContent       = 'Perlu Persetujuan Procurement';
-                                                desc.textContent        = 'Perbandingan ini akan dikirim ke tim Procurement terlebih dahulu sebelum ke Supervisor.';
+                                                desc.textContent        = locked
+                                                    ? 'Otomatis diaktifkan berdasarkan aturan sistem. Tidak dapat diubah.'
+                                                    : 'Perbandingan ini akan dikirim ke tim Procurement terlebih dahulu sebelum ke Supervisor.';
                                                 badge.textContent       = 'Ya';
                                                 badge.style.background  = '#7c3aed';
                                                 badge.style.color       = '#fff';
@@ -376,7 +395,101 @@
                                                 input.value             = '0';
                                                 btnLbl.textContent      = 'Submit untuk Persetujuan Supervisor';
                                             }
+
+                                            // Lock / unlock toggle click
+                                            card.style.cursor = locked ? 'not-allowed' : 'pointer';
+                                            card.style.opacity = locked ? '0.85' : '1';
+
+                                            // Show/hide auto-warning banner
+                                            if (locked && on) {
+                                                alert.style.display = 'flex';
+                                                reason.innerHTML = reasons.map(r => `<span class="d-block">• ${r}</span>`).join('');
+                                            } else {
+                                                alert.style.display = 'none';
+                                            }
+                                        }
+
+                                        document.getElementById('procurementToggleCard').addEventListener('click', function() {
+                                            if (autoOn) return; // strictly blocked when auto-triggered
+                                            manualOn = !manualOn;
+                                            applyProcurementState(manualOn, false, []);
+                                        });
+
+                                        // Check rules automatically whenever price inputs change
+                                        // Get the column index of the currently selected vendor
+                                        function getSelectedVendorColIdx() {
+                                            const dropdown = document.getElementById('selectedVendorDropdown');
+                                            const selectedName = dropdown ? dropdown.value.trim() : '';
+                                            if (!selectedName) return null;
+                                            let found = null;
+                                            document.querySelectorAll('#priceMatrixHeader th[id^="priceColHeader_"]').forEach(function(th) {
+                                                const nameEl = th.querySelector('.vendor-col-name');
+                                                if (nameEl && nameEl.textContent.trim() === selectedName) {
+                                                    found = parseInt(th.id.replace('priceColHeader_', ''));
+                                                }
+                                            });
+                                            return found;
+                                        }
+
+                                        window.checkProcurementRules = function() {
+                                            const reasons = [];
+                                            const selIdx  = getSelectedVendorColIdx(); // null if no vendor selected yet
+
+                                            // Rule 1: product never bought before
+                                            document.querySelectorAll('#priceMatrixBody tr[data-row]').forEach(function(row) {
+                                                const rowIdx = row.dataset.row;
+                                                const pidInp = row.querySelector(`input[name="vendor_prices[${rowIdx}][product_id]"]`);
+                                                const pid    = pidInp ? parseInt(pidInp.value) : 0;
+                                                if (pid && !productsWithHistory.includes(pid)) {
+                                                    const pname = row.querySelector('td:nth-child(2)')?.textContent?.trim() || 'Produk ID ' + pid;
+                                                    reasons.push('Produk <strong>' + pname + '</strong> belum pernah dibeli sebelumnya (Rule 1)');
+                                                }
+                                            });
+
+                                            // Rule 2 & 3: use selected vendor's price; fall back to min if none selected
+                                            document.querySelectorAll('#priceMatrixBody tr[data-row]').forEach(function(row) {
+                                                const rowIdx = row.dataset.row;
+                                                const qtyInp = row.querySelector(`input[name="vendor_prices[${rowIdx}][qty]"]`);
+                                                const qty    = qtyInp ? (parseFloat(qtyInp.value) || 0) : 0;
+                                                const pname  = row.querySelector('td:nth-child(2)')?.textContent?.trim() || 'Produk';
+
+                                                let price = 0;
+                                                if (selIdx !== null) {
+                                                    const selInp = row.querySelector(`input[name="vendor_prices[${rowIdx}][prices][${selIdx}]"]`);
+                                                    price = selInp ? (parseFloat(selInp.value) || 0) : 0;
+                                                } else {
+                                                    // No vendor selected yet — skip Rules 2 & 3
+                                                    return;
+                                                }
+
+                                                const total = price * qty;
+
+                                                if (qty >= 25) {
+                                                    reasons.push('Quantity <strong>' + qty + '</strong> ≥ 25 untuk <strong>' + pname + '</strong> (Rule 2)');
+                                                }
+                                                if (price > 0 && total >= 5000000) {
+                                                    reasons.push('Total harga <strong>Rp ' + total.toLocaleString('id-ID') + '</strong> ≥ Rp 5.000.000 untuk <strong>' + pname + '</strong> (Rule 3)');
+                                                }
+                                            });
+
+                                            autoOn = reasons.length > 0;
+                                            applyProcurementState(autoOn || manualOn, autoOn, reasons);
                                         };
+
+                                        // Trigger on vendor dropdown change (primary UX trigger for Rules 2 & 3)
+                                        document.addEventListener('change', function(e) {
+                                            if (e.target.id === 'selectedVendorDropdown') {
+                                                window.checkProcurementRules();
+                                            }
+                                        });
+                                        // Also trigger on price/qty input change
+                                        document.addEventListener('input', function(e) {
+                                            if (e.target.closest('#priceMatrixBody')) {
+                                                window.checkProcurementRules();
+                                            }
+                                        });
+                                        setTimeout(window.checkProcurementRules, 800);
+                                        setTimeout(window.checkProcurementRules, 1500);
                                     })();
                                 </script>
                             </form>
@@ -665,6 +778,7 @@
 
                             document.getElementById('priceMatrixSection').style.display = '';
                             document.getElementById('recommendSection').style.display = '';
+                            if (typeof window.checkProcurementRules === 'function') window.checkProcurementRules();
                         }
 
                         function removePriceColumn(idx) {

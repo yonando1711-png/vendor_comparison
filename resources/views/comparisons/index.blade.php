@@ -98,7 +98,8 @@
                                         {{ $c->created_at->format('d M Y H:i') }}
                                     </td>
                                     <td class="text-center">
-                                        <span class="badge {{ $c->statusBadgeClass() }}">
+                                        <span class="badge {{ $c->statusBadgeClass() }}"
+                                            @if($c->status === 'pending_procurement') style="background:#7c3aed" @endif>
                                             {{ $c->statusLabel() }}
                                         </span>
                                         @if ($c->isRejected())

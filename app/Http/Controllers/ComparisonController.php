@@ -95,7 +95,9 @@ class ComparisonController extends Controller
             $autoFlag = VendorComparison::checkRequiresProcurement(
                 $request->vendor_prices ?? [],
                 $history,
-                $rfqLines
+                $rfqLines,
+                $request->selected_vendor ?? '',
+                $request->vendors ?? []
             );
         } catch (\Throwable) {
             // If Odoo is unreachable, fall back to manual flag only

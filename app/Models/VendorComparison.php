@@ -162,19 +162,39 @@ class VendorComparison extends Model
     public static function checkRequiresProcurement(
         array $vendorPrices,
         array $history,
-        array $rfqLines
+        array $rfqLines,
+        string $selectedVendor = '',
+        array $vendors = []
     ): bool {
+        // Find the column index of the selected vendor
+        $selectedIdx = null;
+        if ($selectedVendor !== '' && !empty($vendors)) {
+            foreach ($vendors as $i => $v) {
+                if (($v['name'] ?? '') === $selectedVendor) {
+                    $selectedIdx = $i;
+                    break;
+                }
+            }
+        }
+
         foreach ($vendorPrices as $row) {
-            $qty       = (float) ($row['qty'] ?? 0);
-            $prices    = array_filter((array) ($row['prices'] ?? []), fn($p) => (float) $p > 0);
-            $unitPrice = !empty($prices) ? min(array_map('floatval', $prices)) : 0;
+            $qty    = (float) ($row['qty'] ?? 0);
+            $allPrices = array_filter((array) ($row['prices'] ?? []), fn($p) => (float) $p > 0);
+
+            // Use selected vendor price if known, else min across all
+            if ($selectedIdx !== null && isset($row['prices'][$selectedIdx])) {
+                $unitPrice = (float) $row['prices'][$selectedIdx];
+            } else {
+                $unitPrice = !empty($allPrices) ? min(array_map('floatval', $allPrices)) : 0;
+            }
+
             $lineTotal = $unitPrice * $qty;
 
             if ($qty >= 25) {
                 return true;
             }
 
-            if ($lineTotal >= 5_000_000) {
+            if ($unitPrice > 0 && $lineTotal >= 5_000_000) {
                 return true;
             }
         }
@@ -209,7 +229,7 @@ class VendorComparison extends Model
     {
         return match ($this->status) {
             'pending_supervisor'  => 'bg-warning text-dark',
-            'pending_procurement' => 'bg-purple text-white',
+            'pending_procurement' => 'text-white',
             'pending_manager'     => 'bg-info text-dark',
             'approved'            => 'bg-success',
             'rejected'            => 'bg-danger',
