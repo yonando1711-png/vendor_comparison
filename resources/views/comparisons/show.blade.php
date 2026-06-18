@@ -943,7 +943,12 @@
                                 style="border:1px solid #000; padding:4px 6px; text-align:right; font-weight:bold;">TOTAL
                             </td>
                             <td style="border:1px solid #000; padding:4px 6px; text-align:right;">
-                                @php $origTotal = array_sum(array_column($vpRows, 'pricelist_original')); @endphp
+                                @php
+                                    $origTotal = 0;
+                                    foreach ($vpRows as $row) {
+                                        $origTotal += (float)($row['pricelist_original'] ?? 0) * (float)($row['qty'] ?? 1);
+                                    }
+                                @endphp
                                 {{ $currency }}{{ number_format($origTotal, 0, ',', '.') }}
                             </td>
                             @foreach ($vendors as $vi => $v)
@@ -954,8 +959,9 @@
                                     $dRate = isset($dm[0]) ? (float) $dm[0] / 100 : 0;
                                     foreach ($vpRows as $row) {
                                         $p = (float) ($row['prices'][$vi] ?? 0);
-                                        $vTotal += $p;
-                                        $vTotalDisc += $p * (1 - $dRate);
+                                        $qty = (float) ($row['qty'] ?? 1);
+                                        $vTotal += $p * $qty;
+                                        $vTotalDisc += $p * $qty * (1 - $dRate);
                                     }
                                     $isRec = ($v['name'] ?? '') === $comparison->selected_vendor;
                                 @endphp
