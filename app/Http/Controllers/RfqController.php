@@ -24,8 +24,11 @@ class RfqController extends Controller
             $odooError = $e->getMessage();
         }
 
-        // Map po_id → comparison so the view can show CLVP status badges
+        // Map po_id → comparison so the view can show CLVP status badges.
+        // When multiple comparisons exist for the same RFQ (e.g. after rejection + resubmission),
+        // prefer the active/latest one by ordering descending and keying by po_id (first wins).
         $existingComparisons = VendorComparison::whereIn('po_id', array_column($rfqs, 'id'))
+            ->orderByDesc('id')
             ->get(['id', 'po_id', 'status'])
             ->keyBy('po_id');
 
