@@ -444,6 +444,7 @@
                                                 @php
                                                     $isStaffChoice = $v['name'] === $comparison->selected_vendor;
                                                     $isSysBest = $v['name'] === $systemBestName;
+                                                    $isLocal = in_array(strtolower(trim($v['name'])), $localSupplierNames);
                                                 @endphp
                                                 <span
                                                     class="badge d-inline-flex align-items-center gap-1
@@ -455,6 +456,9 @@
                                                         <i class="bi bi-cpu-fill" title="System recommendation"></i>
                                                     @endif
                                                     {{ $v['name'] }}
+                                                    @if ($isLocal)
+                                                        <span class="ms-1" style="font-size:.65rem; color:#15803d; background:#fff; border:1px solid #15803d; border-radius:.2rem; padding:0 3px; display:inline-block">Local</span>
+                                                    @endif
                                                 </span>
                                             @endforeach
                                         </div>
@@ -465,6 +469,7 @@
                                                 price</span>
                                             <span><i class="bi bi-check-circle-fill text-success me-1"></i>Green = Both
                                                 match</span>
+                                            <span><span style="font-size:.65rem; color:#15803d; background:#fff; border:1px solid #15803d; border-radius:.2rem; padding:0 3px; display:inline-block">Local</span> = Master supplier (not in Odoo)</span>
                                         </div>
                                     </div>
                                 @endif

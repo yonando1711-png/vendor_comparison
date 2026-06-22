@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\ComparisonLog;
+use App\Models\MasterSupplier;
 use App\Models\VendorComparison;
 use App\Services\OdooService;
+use Illuminate\Support\Facades\Cache;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
@@ -169,12 +171,29 @@ class ComparisonController extends Controller
             $history = [];
         }
 
+        $masterSuppliers = MasterSupplier::where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'street', 'street2', 'city', 'phone', 'mobile', 'email'])
+            ->map(fn($s) => [
+                'id'      => 'local_' . $s->id,
+                'name'    => $s->name,
+                'street'  => $s->street,
+                'street2' => $s->street2,
+                'city'    => $s->city,
+                'phone'   => $s->phone,
+                'mobile'  => $s->mobile,
+                'email'   => $s->email,
+                'source'  => 'local',
+            ])
+            ->toArray();
+
         return view('rfq.show', [
-            'rfq'        => $rfq,
-            'history'    => $history,
-            'vendors'    => $vendors,
-            'error'      => null,
-            'comparison' => $comparison, // pre-fill signal
+            'rfq'             => $rfq,
+            'history'         => $history,
+            'vendors'         => $vendors,
+            'masterSuppliers' => $masterSuppliers,
+            'error'           => null,
+            'comparison'      => $comparison, // pre-fill signal
         ]);
     }
 
@@ -391,7 +410,11 @@ class ComparisonController extends Controller
 
         $comparison->load(['creator', 'supervisor', 'procurement', 'manager', 'rejectedBy', 'cancelledBy', 'logs.user']);
 
-        return view('comparisons.show', compact('comparison', 'rfq', 'history'));
+        $localSupplierNames = Cache::remember('local_supplier_names', 300, function () {
+            return MasterSupplier::where('is_active', true)->pluck('name')->map(fn($n) => strtolower(trim($n)))->toArray();
+        });
+
+        return view('comparisons.show', compact('comparison', 'rfq', 'history', 'localSupplierNames'));
     }
 
     /**

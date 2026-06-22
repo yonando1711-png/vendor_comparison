@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\MasterSupplier;
 use App\Models\VendorComparison;
 use App\Services\OdooService;
 use Illuminate\Http\Request;
@@ -119,6 +120,7 @@ class RfqController extends Controller
                 'rfq'                => null,
                 'history'            => [],
                 'vendors'            => [],
+                'masterSuppliers'    => [],
                 'existingComparison' => null,
                 'comparison'         => null,
                 'error'              => $e->getMessage(),
@@ -130,10 +132,27 @@ class RfqController extends Controller
             ->latest()
             ->first();
 
+        $masterSuppliers = MasterSupplier::where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'street', 'street2', 'city', 'phone', 'mobile', 'email'])
+            ->map(fn($s) => [
+                'id'      => 'local_' . $s->id,
+                'name'    => $s->name,
+                'street'  => $s->street,
+                'street2' => $s->street2,
+                'city'    => $s->city,
+                'phone'   => $s->phone,
+                'mobile'  => $s->mobile,
+                'email'   => $s->email,
+                'source'  => 'local',
+            ])
+            ->toArray();
+
         return view('rfq.show', [
             'rfq'                => $rfq,
             'history'            => $history,
             'vendors'            => $vendors,
+            'masterSuppliers'    => $masterSuppliers,
             'existingComparison' => $existingComparison,
             'comparison'         => null,
             'error'              => null,

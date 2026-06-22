@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ComparisonController;
+use App\Http\Controllers\MasterSupplierController;
 use App\Http\Controllers\RfqController;
 use Illuminate\Support\Facades\Route;
 
@@ -32,6 +33,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/comparisons/{comparison}/cancel', [ComparisonController::class, 'cancel'])->name('comparisons.cancel');
     Route::get('/comparisons/{comparison}/pdf', [ComparisonController::class, 'pdf'])->name('comparisons.pdf');
     Route::post('/comparisons/{comparison}/odoo-post', [ComparisonController::class, 'odooPost'])->name('comparisons.odoo-post');
+
+    // Master Suppliers (local vendors not in Odoo)
+    Route::get('/master-suppliers', [MasterSupplierController::class, 'index'])->name('master-suppliers.index');
+    Route::post('/master-suppliers', [MasterSupplierController::class, 'store'])->name('master-suppliers.store');
+    Route::put('/master-suppliers/{masterSupplier}', [MasterSupplierController::class, 'update'])->name('master-suppliers.update');
+    Route::delete('/master-suppliers/{masterSupplier}', [MasterSupplierController::class, 'destroy'])->name('master-suppliers.destroy');
 
     // Admin: user management
     Route::get('/admin/users', [AdminController::class, 'index'])->name('admin.users');

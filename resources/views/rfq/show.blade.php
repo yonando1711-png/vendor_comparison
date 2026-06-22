@@ -547,6 +547,8 @@
                     {{-- ── Odoo vendor master data (embedded for auto-fill) ── --}}
                     <script>
                         const ODOO_VENDORS = @json($vendors);
+                        const LOCAL_VENDORS = @json($masterSuppliers ?? []);
+                        const ALL_VENDORS = [...ODOO_VENDORS, ...LOCAL_VENDORS];
                         const PRODUCT_ROWS = {{ $lineIdx ?? 0 }};
                         const IS_EDIT_MODE = {{ $isEditMode ? 'true' : 'false' }};
                         const IS_REJECTED_PREFILL = {{ $isRejectedPrefill ? 'true' : 'false' }};
@@ -557,7 +559,7 @@
                         let vendorCount = 0;
 
                         const vendorLookup = {};
-                        ODOO_VENDORS.forEach(v => {
+                        ALL_VENDORS.forEach(v => {
                             vendorLookup[v.id] = v;
                         });
 
@@ -576,8 +578,10 @@
                             card.dataset.idx = idx;
                             const escHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g,
                                 '&quot;');
-                            const odooOptions = ODOO_VENDORS.map(v =>
-                                `<option value="${v.id}">${escHtml(v.name)}${v.city ? ' - ' + escHtml(v.city) : ''}</option>`).join('');
+                            const allOptions = ALL_VENDORS.map(v => {
+                                const localBadge = v.source === 'local' ? ' <span style="color:#15803d;font-size:.75rem">[Local]</span>' : '';
+                                return `<option value="${v.id}">${escHtml(v.name)}${v.city ? ' - ' + escHtml(v.city) : ''}${localBadge}</option>`;
+                            }).join('');
                             card.innerHTML = `
                         <div class="card-header py-2 d-flex align-items-center gap-2"
                             style="background:#f8fafc;">
@@ -593,10 +597,10 @@
                         <div class="card-body">
                             <div class="row g-2">
                                 <div class="col-12">
-                                    <label class="form-label small fw-semibold mb-1">Cari Supplier dari Odoo <span class="text-muted fw-normal">(opsional, untuk auto-isi)</span></label>
+                                    <label class="form-label small fw-semibold mb-1">Cari Supplier <span class="text-muted fw-normal">(opsional, untuk auto-isi)</span></label>
                                     <select class="form-select form-select-sm odoo-autofill">
-                                        <option value="">— Pilih supplier dari Odoo —</option>
-                                        ${odooOptions}
+                                        <option value="">— Pilih supplier —</option>
+                                        ${allOptions}
                                     </select>
                                 </div>
                                 <div class="col-md-6">
@@ -682,7 +686,7 @@
                                 new TomSelect(tsEl, {
                                     maxOptions: 200,
                                     searchField: ['text'],
-                                    placeholder: '— Pilih supplier dari Odoo —',
+                                    placeholder: '— Pilih supplier —',
                                     onChange(val) {
                                         autoFill(idx, val);
                                     },
