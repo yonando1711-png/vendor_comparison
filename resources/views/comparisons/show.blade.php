@@ -32,6 +32,28 @@
         </div>
     @endif
 
+    {{-- Prominent cancellation notice for creators --}}
+    @if ($comparison->isCancelled() && Auth::user()->isCreator())
+        <div class="alert alert-warning d-flex gap-3 align-items-start mb-4">
+            <i class="bi bi-slash-circle-fill fs-4 flex-shrink-0 mt-1"></i>
+            <div>
+                <h6 class="mb-1 fw-bold">This CLVP was cancelled</h6>
+                <div class="mb-1">
+                    Cancelled by <strong>{{ $comparison->cancelledBy->name ?? '—' }}</strong>
+                    on <strong>{{ $comparison->cancelled_at?->format('d M Y H:i') }}</strong>
+                </div>
+                @if ($comparison->cancel_reason)
+                    <div class="fst-italic">"{{ $comparison->cancel_reason }}"</div>
+                @endif
+                <div class="mt-2">
+                    <a href="{{ route('rfq.show', $comparison->po_id) }}" class="btn btn-sm btn-warning">
+                        <i class="bi bi-pencil me-1"></i>Submit New CLVP for this RFQ
+                    </a>
+                </div>
+            </div>
+        </div>
+    @endif
+
     {{-- Tabs --}}
     <ul class="nav nav-tabs mb-4" id="clvpTabs">
         <li class="nav-item">

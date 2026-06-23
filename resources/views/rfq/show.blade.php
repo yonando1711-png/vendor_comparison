@@ -114,13 +114,15 @@
                 @if ($existing && !$isEditMode)
                     <div
                         class="alert d-flex align-items-center gap-3 mb-4
-                    {{ $existing->isApproved() ? 'alert-success' : ($existing->isRejected() ? 'alert-danger' : 'alert-info') }}">
+                    {{ $existing->isApproved() ? 'alert-success' : ($existing->isRejected() ? 'alert-danger' : ($existing->isCancelled() ? 'alert-warning' : 'alert-info')) }}">
                         <i
-                            class="bi {{ $existing->isApproved() ? 'bi-patch-check-fill' : ($existing->isRejected() ? 'bi-x-circle-fill' : 'bi-hourglass-split') }} fs-4"></i>
+                            class="bi {{ $existing->isApproved() ? 'bi-patch-check-fill' : ($existing->isRejected() ? 'bi-x-circle-fill' : ($existing->isCancelled() ? 'bi-slash-circle-fill' : 'bi-hourglass-split')) }} fs-4"></i>
                         <div>
                             <strong>
                                 @if ($existing->isRejected())
                                     CLVP was rejected.
+                                @elseif ($existing->isCancelled())
+                                    CLVP was cancelled.
                                 @else
                                     Comparison already submitted.
                                 @endif
@@ -137,7 +139,7 @@
                     </div>
                 @endif
 
-                @if (Auth::user()->isCreator() && (!$existing || $isEditMode || $existing->isRejected()))
+                @if (Auth::user()->isCreator() && (!$existing || $isEditMode || $existing->isRejected() || $existing->isCancelled()))
                     {{-- ════════════════════════════════════════════════════════
                      DATA CALON VENDOR — CLVP Input Form
                 ════════════════════════════════════════════════════════ --}}
