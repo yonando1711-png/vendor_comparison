@@ -259,7 +259,7 @@
                                                             ? $line['product_uom'][1]
                                                             : '';
                                                     @endphp
-                                                    <tr data-row="{{ $lineIdx }}" data-pricelist="{{ $line['price_unit'] }}">
+                                                    <tr data-row="{{ $lineIdx }}" data-pricelist="{{ $line['price_unit'] }}" data-linename="{{ $line['name'] ?? '' }}">
                                                         <td class="text-center">{{ $lineIdx + 1 }}</td>
                                                         <td>
                                                             <div class="fw-semibold">{{ $pName }}</div>
@@ -385,12 +385,21 @@
                                 </div>
 
                                 @php
-                                    $productsWithHistory = array_keys(array_filter($history, fn($h) => !empty($h)));
+                                    // Build a set of "productId::normalizedDesc" keys that have history,
+                                    // mirroring the key format used in OdooService::fetchProductVendorHistory.
+                                    $historyKeys = array_keys(array_filter($history, fn($h) => !empty($h)));
+                                    // Also build a map of product_id+desc => bool for JS lookup
+                                    $historyKeySet = array_fill_keys($historyKeys, true);
                                 @endphp
                                 <script>
                                     (function() {
-                                        // Product IDs that HAVE confirmed purchase history (Rule 1: empty = never bought)
-                                        const productsWithHistory = @json($productsWithHistory);
+                                        // Keys that HAVE confirmed purchase history, format: "productId::normalizedDesc"
+                                        const historyKeySet = @json($historyKeySet);
+
+                                        function hasHistory(pid, desc) {
+                                            const key = pid + '::' + desc.trim().toLowerCase().replace(/\s+/g, ' ');
+                                            return historyKeySet.hasOwnProperty(key);
+                                        }
 
                                         let manualOn  = false;
                                         let autoOn    = false;
@@ -475,10 +484,12 @@
                                             document.querySelectorAll('#priceMatrixBody tr[data-row]').forEach(function(row) {
                                                 const rowIdx = row.dataset.row;
                                                 const pidInp = row.querySelector(`input[name="vendor_prices[${rowIdx}][product_id]"]`);
-                                                const pid    = pidInp ? parseInt(pidInp.value) : 0;
-                                                if (pid && !productsWithHistory.includes(pid)) {
-                                                    const pname = row.querySelector('td:nth-child(2)')?.textContent?.trim() || 'Produk ID ' + pid;
-                                                    reasons.push('Produk <strong>' + pname + '</strong> belum pernah dibeli sebelumnya (Rule 1)');
+                                                const pid      = pidInp ? parseInt(pidInp.value) : 0;
+                                                const linename = row.dataset.linename || '';
+                                                const pname    = row.querySelector('td:nth-child(2)')?.textContent?.trim() || '';
+                                                if (pid && !hasHistory(pid, linename)) {
+                                                    const label = pname || 'Produk ID ' + pid;
+                                                    reasons.push('Produk <strong>' + label + '</strong> belum pernah dibeli sebelumnya (Rule 1)');
                                                 }
                                             });
 
@@ -1535,8 +1546,9 @@
                 $rfqVendorId = is_array($rfq['partner_id']) ? $rfq['partner_id'][0] : null;
                 $rfqVendorNm = is_array($rfq['partner_id']) ? $rfq['partner_id'][1] : '—';
 
-                // Vendor rows: start with the current RFQ vendor (if it exists in history)
-                $vendorRows = $history[$productId] ?? [];
+                // Vendor rows: look up by composite key (productId::normalizedDesc)
+                $historyKey = $productId . '::' . \App\Models\VendorComparison::normalizeDescription($line['name'] ?? '');
+                $vendorRows = $history[$historyKey] ?? [];
 
                 // Collect all prices (confirmed history + current RFQ) to determine best/worst
                 $allPrices = array_column(array_values($vendorRows), 'price_unit');

@@ -148,15 +148,29 @@ class VendorComparison extends Model
     }
 
     /**
+     * Normalize a product line description for comparison.
+     * Lowercases, trims, and collapses internal whitespace so minor
+     * formatting differences don't create false "new item" detections.
+     */
+    public static function normalizeDescription(string $desc): string
+    {
+        return preg_replace('/\s+/', ' ', strtolower(trim($desc)));
+    }
+
+    /**
      * Evaluate whether automatic conditions trigger Procurement review.
      * Note: The staff can also manually flag via the toggle at submission.
      * Rules (ANY one is sufficient):
-     *   1. product never purchased before (no history entry)
+     *   1. product never purchased before (no history entry for this product+description)
      *   2. qty >= 25
      *   3. line total (best price * qty) >= 5,000,000
      *
+     * History is keyed by "product_id::normalized_description" so that generic-code
+     * products (e.g. [GA], [ATK]) sharing the same product_id are differentiated
+     * by what was actually ordered (Approach A: normalize + exact match).
+     *
      * @param array $vendorPrices  stored vendor_prices rows
-     * @param array $history       product_id => vendor history from Odoo
+     * @param array $history       "product_id::desc" => vendor history from Odoo
      * @param array $rfqLines      RFQ lines from Odoo
      */
     public static function checkRequiresProcurement(
@@ -203,8 +217,9 @@ class VendorComparison extends Model
             if (!is_array($line['product_id'])) {
                 continue;
             }
-            $productId = $line['product_id'][0];
-            if (empty($history[$productId])) {
+            $productId  = $line['product_id'][0];
+            $historyKey = $productId . '::' . self::normalizeDescription($line['name'] ?? '');
+            if (empty($history[$historyKey])) {
                 return true;
             }
         }
