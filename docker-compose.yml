@@ -72,7 +72,7 @@ services:
     image: phpmyadmin:latest
     restart: unless-stopped
     ports:
-      - "${PMA_PORT:-6081}:80"
+      - "${PMA_PORT:-6082}:80"
     environment:
       PMA_HOST: mysql
       PMA_PORT: 3306
