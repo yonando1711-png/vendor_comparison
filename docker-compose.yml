@@ -67,6 +67,24 @@ services:
     networks:
       - backend
 
+  # ── phpMyAdmin ─────────────────────────────────────────────────────────────
+  phpmyadmin:
+    image: phpmyadmin:latest
+    restart: unless-stopped
+    ports:
+      - "${PMA_PORT:-6081}:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: ${DB_USERNAME:-laravel}
+      PMA_PASSWORD: ${DB_PASSWORD}
+      UPLOAD_LIMIT: 64M
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - backend
+
   # ── Queue worker ───────────────────────────────────────────────────────────
   worker:
     image: ghcr.io/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}:${APP_IMAGE_TAG:-latest}
