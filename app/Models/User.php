@@ -49,6 +49,10 @@ class User extends Authenticatable
     {
         return $this->role === 'viewer';
     }
+    public function isController(): bool
+    {
+        return $this->role === 'controller';
+    }
 
     public function roleBadge(): string
     {
@@ -58,6 +62,7 @@ class User extends Authenticatable
             'manager'      => 'Purchasing Manager',
             'admin'        => 'Administrator',
             'viewer'       => 'Viewer',
+            'controller'   => 'Controller',
             default        => 'Purchasing Staff',
         };
     }

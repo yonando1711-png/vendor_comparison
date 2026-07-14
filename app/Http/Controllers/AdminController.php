@@ -33,7 +33,7 @@ class AdminController extends Controller implements HasMiddleware
         $data = $request->validate([
             'name'     => ['required', 'string', 'max:255'],
             'email'    => ['required', 'email', 'unique:users,email'],
-            'role'     => ['required', 'in:creator,supervisor,procurement,manager,viewer,admin'],
+            'role'     => ['required', 'in:creator,supervisor,procurement,manager,viewer,admin,controller'],
             'password' => ['required', 'string', 'min:8'],
         ]);
 
@@ -51,7 +51,7 @@ class AdminController extends Controller implements HasMiddleware
     {
         $data = $request->validate([
             'name'     => ['required', 'string', 'max:255'],
-            'role'     => ['required', 'in:creator,supervisor,procurement,manager,viewer,admin'],
+            'role'     => ['required', 'in:creator,supervisor,procurement,manager,viewer,admin,controller'],
             'password' => ['nullable', 'string', 'min:8'],
         ]);
 

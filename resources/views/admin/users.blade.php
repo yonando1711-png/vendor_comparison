@@ -43,6 +43,7 @@
                         <option value="procurement" {{ old('role') === 'procurement' ? 'selected' : '' }}>Procurement</option>
                         <option value="manager" {{ old('role') === 'manager' ? 'selected' : '' }}>Manager</option>
                         <option value="viewer" {{ old('role') === 'viewer' ? 'selected' : '' }}>Viewer</option>
+                        <option value="controller" {{ old('role') === 'controller' ? 'selected' : '' }}>Controller</option>
                         <option value="admin" {{ old('role') === 'admin' ? 'selected' : '' }}>Admin</option>
                     </select>
                 </div>
@@ -96,6 +97,7 @@
                                         'manager' => 'bg-primary',
                                         'admin' => 'bg-dark',
                                         'viewer' => 'bg-light text-dark border',
+                                        'controller' => 'bg-success',
                                         default => 'bg-secondary',
                                     } }}">{{ $u->roleBadge() }}</span>
                             </td>
@@ -149,6 +151,9 @@
                                                         {{ $u->role === 'manager' ? 'selected' : '' }}>Manager</option>
                                                     <option value="viewer"
                                                         {{ $u->role === 'viewer' ? 'selected' : '' }}>Viewer
+                                                    </option>
+                                                    <option value="controller"
+                                                        {{ $u->role === 'controller' ? 'selected' : '' }}>Controller
                                                     </option>
                                                     <option value="admin" {{ $u->role === 'admin' ? 'selected' : '' }}>
                                                         Admin</option>

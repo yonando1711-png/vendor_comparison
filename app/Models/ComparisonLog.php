@@ -29,8 +29,9 @@ class ComparisonLog extends Model
             'approved_manager'    => 'bi-check-circle-fill text-success',
             'rejected'        => 'bi-x-circle-fill text-danger',
             'edited'          => 'bi-pencil text-warning',
-            'odoo_posted'     => 'bi-cloud-check text-info',
-            default           => 'bi-info-circle text-secondary',
+            'odoo_posted'             => 'bi-cloud-check text-info',
+            'acknowledged_controller' => 'bi-eye-fill text-teal',
+            default                   => 'bi-info-circle text-secondary',
         };
     }
 
@@ -42,8 +43,9 @@ class ComparisonLog extends Model
             'approved_manager'    => 'Approved by Manager',
             'rejected'            => 'Rejected',
             'edited'              => 'Edited',
-            'odoo_posted'         => 'Posted to Odoo',
-            default               => ucfirst($this->action),
+            'odoo_posted'             => 'Posted to Odoo',
+            'acknowledged_controller' => 'Acknowledged by Controller',
+            default                   => ucfirst($this->action),
         };
     }
 }
