@@ -161,6 +161,8 @@
                                             @endif
                                         @elseif($comparison->isPendingProcurement())
                                             <div class="small" style="color:#7c3aed">Waiting for Procurement review…</div>
+                                        @elseif($comparison->isApproved() && $comparison->isBypassed() && $comparison->requires_procurement)
+                                            <div class="text-muted small fst-italic">Skipped — Manager bypass</div>
                                         @else
                                             <div class="text-muted small">—</div>
                                         @endif
@@ -192,6 +194,8 @@
                                             @endif
                                         @elseif($comparison->isPendingSupervisor())
                                             <div class="text-warning small">Waiting for approval…</div>
+                                        @elseif($comparison->isApproved() && $comparison->isBypassed() && !$comparison->supervisor_approved_at)
+                                            <div class="text-muted small fst-italic">Skipped — Manager bypass</div>
                                         @else
                                             <div class="text-muted small">—</div>
                                         @endif
@@ -199,7 +203,7 @@
                                 </li>
 
                                 {{-- Step 4: Manager --}}
-                                <li class="d-flex gap-3">
+                                <li class="d-flex gap-3 {{ $comparison->isKaroseri() ? 'mb-3' : '' }}">
                                     <div class="text-center" style="width:28px">
                                         @if ($comparison->manager_approved_at)
                                             <span class="badge bg-success rounded-circle p-2"><i class="bi bi-check-lg"></i></span>
@@ -210,13 +214,21 @@
                                         @else
                                             <span class="badge bg-secondary rounded-circle p-2"><i class="bi bi-dash"></i></span>
                                         @endif
+                                        @if ($comparison->isKaroseri())
+                                            <div style="width:2px;height:30px;background:#e5e7eb;margin:4px auto"></div>
+                                        @endif
                                     </div>
                                     <div>
                                         <div class="fw-semibold small">Manager Approval</div>
                                         @if ($comparison->manager_approved_at)
                                             <div class="text-muted small">{{ $comparison->manager->name ?? '—' }}</div>
                                             <div class="text-muted small">{{ $comparison->manager_approved_at->format('d M Y H:i') }}</div>
-                                            @if ($comparison->manager_notes)
+                                            @if ($comparison->isBypassed())
+                                                <div class="mt-1">
+                                                    <span class="badge bg-warning text-dark">Manager bypass</span>
+                                                </div>
+                                                <div class="mt-1 p-2 bg-light rounded small fst-italic">{{ $comparison->bypass_reason }}</div>
+                                            @elseif ($comparison->manager_notes)
                                                 <div class="mt-1 p-2 bg-light rounded small fst-italic">{{ $comparison->manager_notes }}</div>
                                             @endif
                                         @elseif($comparison->isPendingManager())
@@ -226,6 +238,35 @@
                                         @endif
                                     </div>
                                 </li>
+
+                                {{-- Step 5: Controller Acknowledgement (KAROSERI only) --}}
+                                @if ($comparison->isKaroseri())
+                                <li class="d-flex gap-3">
+                                    <div class="text-center" style="width:28px">
+                                        @if ($comparison->isAcknowledgedByController())
+                                            <span class="badge rounded-circle p-2 text-white" style="background:#0d9488"><i class="bi bi-eye-fill"></i></span>
+                                        @elseif ($comparison->isApproved())
+                                            <span class="badge rounded-circle p-2 text-white" style="background:#0d9488; opacity:.4"><i class="bi bi-hourglass-split"></i></span>
+                                        @else
+                                            <span class="badge bg-secondary rounded-circle p-2"><i class="bi bi-dash"></i></span>
+                                        @endif
+                                    </div>
+                                    <div>
+                                        <div class="fw-semibold small">Controller — Mengetahui</div>
+                                        @if ($comparison->isAcknowledgedByController())
+                                            <div class="small" style="color:#0d9488">{{ $comparison->controller->name ?? '—' }}</div>
+                                            <div class="text-muted small">{{ $comparison->controller_acknowledged_at->format('d M Y H:i') }}</div>
+                                            @if ($comparison->controller_notes)
+                                                <div class="mt-1 p-2 bg-light rounded small fst-italic">{{ $comparison->controller_notes }}</div>
+                                            @endif
+                                        @elseif ($comparison->isApproved())
+                                            <div class="small" style="color:#0d9488; opacity:.7">Pending acknowledgement…</div>
+                                        @else
+                                            <div class="text-muted small">—</div>
+                                        @endif
+                                    </div>
+                                </li>
+                                @endif
                             </ul>
 
                             {{-- Rejection info --}}
@@ -311,6 +352,53 @@
                                     <button type="submit" class="btn btn-outline-danger w-100"
                                         onclick="return confirm('Are you sure you want to reject this comparison?')">
                                         <i class="bi bi-x-circle me-2"></i>Reject
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- Manager bypass card (skip Procurement / Supervisor) --}}
+                    @if ($comparison->canBypassApprove(Auth::user()))
+                        <div class="card border-danger mt-3">
+                            <div class="card-header py-2" style="background:#fef2f2; border-color:#ef4444">
+                                <h6 class="mb-0 text-danger"><i class="bi bi-skip-forward me-2"></i>Bypass Approval</h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small mb-2">
+                                    The Procurement or Supervisor review step is pending but unavailable.
+                                    As Manager, you may approve this comparison directly and close the workflow.
+                                </p>
+                                <form method="POST" action="{{ route('comparisons.bypass-approve', $comparison) }}">
+                                    @csrf
+                                    <label class="form-label fw-semibold small text-danger">Reason for Bypass <span
+                                            class="text-danger">*</span></label>
+                                    <textarea name="bypass_reason" class="form-control form-control-sm mb-2" rows="2"
+                                        placeholder="e.g. Supervisor/Procurement is on leave…" required></textarea>
+                                    <button type="submit" class="btn btn-success w-100"
+                                        onclick="return confirm('Are you sure you want to bypass Procurement/Supervisor approval and give final approval?')">
+                                        <i class="bi bi-check-circle me-2"></i>Bypass & Final Approve
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- Controller Acknowledgement card (KAROSERI + approved + controller role) --}}
+                    @if ($comparison->isApproved() && $comparison->isKaroseri() && Auth::user()->isController() && !$comparison->isAcknowledgedByController())
+                        <div class="card mt-3" style="border-color:#0d9488;">
+                            <div class="card-header py-2" style="background:#ccfbf1; border-color:#0d9488;">
+                                <h6 class="mb-0" style="color:#0d9488;"><i class="bi bi-eye-fill me-2"></i>Mengetahui — Your Acknowledgement Required</h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small mb-2">This KAROSERI comparison has been approved by the Manager. Please acknowledge (Mengetahui) to confirm you have noted it.</p>
+                                <form method="POST" action="{{ route('comparisons.acknowledge', $comparison) }}">
+                                    @csrf
+                                    <label class="form-label fw-semibold small" style="color:#0d9488;">Notes <span class="text-muted small">(optional)</span></label>
+                                    <textarea name="notes" class="form-control form-control-sm mb-2" rows="2" placeholder="Add any notes (optional)…"></textarea>
+                                    <button type="submit" class="btn w-100 text-white" style="background:#0d9488;"
+                                        onclick="return confirm('Confirm acknowledgement (Mengetahui) for this KAROSERI comparison?')">
+                                        <i class="bi bi-check2-all me-2"></i>Mengetahui — Confirm Acknowledgement
                                     </button>
                                 </form>
                             </div>

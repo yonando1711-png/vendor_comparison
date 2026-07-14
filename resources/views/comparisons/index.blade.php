@@ -161,7 +161,8 @@
                                             @if (
                                                 (Auth::user()->isProcurement() && $c->isPendingProcurement()) ||
                                                 (Auth::user()->isSupervisor() && $c->isPendingSupervisor()) ||
-                                                (Auth::user()->isManager() && $c->isPendingManager()))
+                                                (Auth::user()->isManager() && $c->isPendingManager()) ||
+                                                $c->canBypassApprove(Auth::user()))
                                                 <span class="badge bg-warning text-dark ms-1">Action</span>
                                             @endif
                                         </a>

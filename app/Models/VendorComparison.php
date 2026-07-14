@@ -28,6 +28,9 @@ class VendorComparison extends Model
         'manager_id',
         'manager_approved_at',
         'manager_notes',
+        'bypassed_by',
+        'bypassed_at',
+        'bypass_reason',
         'rejected_by',
         'rejected_at',
         'rejection_reason',
@@ -35,6 +38,9 @@ class VendorComparison extends Model
         'cancelled_by',
         'cancelled_at',
         'cancel_reason',
+        'controller_id',
+        'controller_acknowledged_at',
+        'controller_notes',
     ];
 
     protected $casts = [
@@ -43,10 +49,12 @@ class VendorComparison extends Model
         'supervisor_approved_at'  => 'datetime',
         'procurement_approved_at' => 'datetime',
         'manager_approved_at'     => 'datetime',
+        'bypassed_at'             => 'datetime',
         'requires_procurement'    => 'boolean',
         'rejected_at'            => 'datetime',
         'odoo_synced_at'         => 'datetime',
-        'cancelled_at'           => 'datetime',
+        'cancelled_at'                  => 'datetime',
+        'controller_acknowledged_at'    => 'datetime',
     ];
 
     // ── Relationships ──────────────────────────────────────
@@ -79,6 +87,16 @@ class VendorComparison extends Model
     public function cancelledBy()
     {
         return $this->belongsTo(User::class, 'cancelled_by');
+    }
+
+    public function controller()
+    {
+        return $this->belongsTo(User::class, 'controller_id');
+    }
+
+    public function bypassedBy()
+    {
+        return $this->belongsTo(User::class, 'bypassed_by');
     }
 
     public function logs()
@@ -145,6 +163,35 @@ class VendorComparison extends Model
             return true;
         }
         return false;
+    }
+
+    public function canBypassApprove(\App\Models\User $user): bool
+    {
+        return $user->isManager()
+            && ($this->isPendingProcurement() || $this->isPendingSupervisor());
+    }
+
+    public function isBypassed(): bool
+    {
+        return $this->bypassed_by !== null;
+    }
+
+    /**
+     * Returns true if any vendor_price row's product_name contains "karoseri" (case-insensitive).
+     */
+    public function isKaroseri(): bool
+    {
+        foreach ($this->vendor_prices ?? [] as $row) {
+            if (isset($row['product_name']) && stripos($row['product_name'], 'karoseri') !== false) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public function isAcknowledgedByController(): bool
+    {
+        return $this->controller_acknowledged_at !== null;
     }
 
     /**

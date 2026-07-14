@@ -313,6 +313,43 @@ class ComparisonController extends Controller
     }
 
     /**
+     * Manager bypass: approve a comparison that is still pending Procurement or Supervisor.
+     * Used when the assigned reviewer is unavailable so the workflow can continue.
+     */
+    public function bypassApprove(Request $request, VendorComparison $comparison)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        $request->validate([
+            'bypass_reason' => ['required', 'string', 'max:2000'],
+        ]);
+
+        if (!$comparison->canBypassApprove($user)) {
+            return back()->with('error', 'Only the Manager can bypass Procurement/Supervisor approval for this comparison.');
+        }
+
+        $comparison->update([
+            'status'              => 'approved',
+            'manager_id'          => $user->id,
+            'manager_approved_at' => now(),
+            'manager_notes'       => $request->bypass_reason,
+            'bypassed_by'         => $user->id,
+            'bypassed_at'         => now(),
+            'bypass_reason'       => $request->bypass_reason,
+        ]);
+
+        ComparisonLog::create([
+            'comparison_id' => $comparison->id,
+            'user_id'       => $user->id,
+            'action'        => 'approved_manager_bypass',
+            'notes'         => $request->bypass_reason,
+        ]);
+
+        return back()->with('success', 'Comparison approved via Manager bypass. Procurement/Supervisor steps were skipped.');
+    }
+
+    /**
      * Reject a comparison.
      */
     public function reject(Request $request, VendorComparison $comparison)
@@ -409,7 +446,7 @@ class ComparisonController extends Controller
             $history = [];
         }
 
-        $comparison->load(['creator', 'supervisor', 'procurement', 'manager', 'rejectedBy', 'cancelledBy', 'logs.user']);
+        $comparison->load(['creator', 'supervisor', 'procurement', 'manager', 'bypassedBy', 'controller', 'rejectedBy', 'cancelledBy', 'logs.user']);
 
         $localSupplierNames = Cache::remember('local_supplier_names', 300, function () {
             return MasterSupplier::where('is_active', true)->pluck('name')->map(fn($n) => strtolower(trim($n)))->toArray();
@@ -481,6 +518,73 @@ class ComparisonController extends Controller
         unset($row);
 
         return $vendorPrices;
+    }
+
+    /**
+     * Controller acknowledges (Mengetahui) an approved KAROSERI comparison.
+     */
+    public function acknowledge(Request $request, VendorComparison $comparison)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        if (!$user->isController()) {
+            return back()->with('error', 'Only the Controller may acknowledge comparisons.');
+        }
+
+        if (!$comparison->isApproved()) {
+            return back()->with('error', 'Only approved comparisons can be acknowledged.');
+        }
+
+        if (!$comparison->isKaroseri()) {
+            return back()->with('error', 'This comparison does not contain Karoseri items.');
+        }
+
+        if ($comparison->isAcknowledgedByController()) {
+            return back()->with('error', 'This comparison has already been acknowledged.');
+        }
+
+        $request->validate(['notes' => ['nullable', 'string', 'max:2000']]);
+
+        $comparison->update([
+            'controller_id'                => $user->id,
+            'controller_acknowledged_at'   => now(),
+            'controller_notes'             => $request->notes,
+        ]);
+
+        ComparisonLog::create([
+            'comparison_id' => $comparison->id,
+            'user_id'       => $user->id,
+            'action'        => 'acknowledged_controller',
+            'notes'         => $request->notes,
+        ]);
+
+        return back()->with('success', 'Comparison acknowledged successfully (Mengetahui).');
+    }
+
+    /**
+     * Dashboard for Controller: approved KAROSERI comparisons awaiting / done acknowledgement.
+     */
+    public function karoseriIndex()
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        if (!$user->isController() && !$user->isAdmin()) {
+            abort(403, 'Only the Controller or Admin may access this page.');
+        }
+
+        $comparisons = VendorComparison::with(['creator', 'manager', 'controller'])
+            ->where('status', 'approved')
+            ->orderByDesc('manager_approved_at')
+            ->get()
+            ->filter(fn($c) => $c->isKaroseri())
+            ->values();
+
+        $pendingCount = $comparisons->whereNull('controller_acknowledged_at')->count();
+        $doneCount    = $comparisons->whereNotNull('controller_acknowledged_at')->count();
+
+        return view('comparisons.karoseri', compact('comparisons', 'pendingCount', 'doneCount'));
     }
 
     /**
