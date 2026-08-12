@@ -40,20 +40,12 @@
                     <select name="role" class="form-select form-select-sm" required>
                         <option value="creator" {{ old('role') === 'creator' ? 'selected' : '' }}>Purchasing Staff</option>
                         <option value="supervisor" {{ old('role') === 'supervisor' ? 'selected' : '' }}>Supervisor</option>
+                        <option value="procurement" {{ old('role') === 'procurement' ? 'selected' : '' }}>Procurement</option>
                         <option value="manager" {{ old('role') === 'manager' ? 'selected' : '' }}>Manager</option>
                         <option value="viewer" {{ old('role') === 'viewer' ? 'selected' : '' }}>Viewer</option>
                         <option value="controller" {{ old('role') === 'controller' ? 'selected' : '' }}>Controller</option>
                         <option value="admin" {{ old('role') === 'admin' ? 'selected' : '' }}>Admin</option>
                     </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label form-label-sm fw-semibold">Department</label>
-                    <input type="text" name="department"
-                        class="form-control form-control-sm @error('department') is-invalid @enderror"
-                        value="{{ old('department') }}" placeholder="e.g. HR">
-                    @error('department')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
                 </div>
                 <div class="col-md-2">
                     <label class="form-label form-label-sm fw-semibold">Password</label>
@@ -81,7 +73,6 @@
                     <tr>
                         <th class="ps-3">Name</th>
                         <th>Email</th>
-                        <th class="text-center">Department</th>
                         <th class="text-center">Role</th>
                         <th class="text-center">Comparisons Created</th>
                         <th class="text-center">Joined</th>
@@ -98,11 +89,11 @@
                                 @endif
                             </td>
                             <td class="text-muted">{{ $u->email }}</td>
-                            <td class="text-center text-muted small">{{ $u->department ?: '-' }}</td>
                             <td class="text-center">
                                 <span
                                     class="badge {{ match ($u->role) {
                                         'supervisor' => 'bg-info text-dark',
+                                        'procurement' => 'bg-warning text-dark',
                                         'manager' => 'bg-primary',
                                         'admin' => 'bg-dark',
                                         'viewer' => 'bg-light text-dark border',
@@ -153,6 +144,9 @@
                                                     <option value="supervisor"
                                                         {{ $u->role === 'supervisor' ? 'selected' : '' }}>Supervisor
                                                     </option>
+                                                    <option value="procurement"
+                                                        {{ $u->role === 'procurement' ? 'selected' : '' }}>Procurement
+                                                    </option>
                                                     <option value="manager"
                                                         {{ $u->role === 'manager' ? 'selected' : '' }}>Manager</option>
                                                     <option value="viewer"
@@ -164,11 +158,6 @@
                                                     <option value="admin" {{ $u->role === 'admin' ? 'selected' : '' }}>
                                                         Admin</option>
                                                 </select>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label fw-semibold">Department</label>
-                                                <input type="text" name="department" class="form-control"
-                                                    value="{{ $u->department }}">
                                             </div>
                                             <div class="mb-3">
                                                 <label class="form-label fw-semibold">New Password <span

@@ -21,7 +21,6 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'role',
-        'department',
         'email',
         'password',
     ];
@@ -37,6 +36,10 @@ class User extends Authenticatable
     public function isManager(): bool
     {
         return $this->role === 'manager';
+    }
+    public function isProcurement(): bool
+    {
+        return $this->role === 'procurement';
     }
     public function isAdmin(): bool
     {
@@ -54,12 +57,13 @@ class User extends Authenticatable
     public function roleBadge(): string
     {
         return match ($this->role) {
-            'supervisor' => 'Purchasing Supervisor',
-            'manager'    => 'Purchasing Manager',
-            'admin'      => 'Administrator',
-            'viewer'     => 'Viewer',
-            'controller' => 'Controller',
-            default      => 'Purchasing Staff',
+            'supervisor'   => 'Purchasing Supervisor',
+            'procurement'  => 'Procurement',
+            'manager'      => 'Purchasing Manager',
+            'admin'        => 'Administrator',
+            'viewer'       => 'Viewer',
+            'controller'   => 'Controller',
+            default        => 'Purchasing Staff',
         };
     }
 

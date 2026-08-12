@@ -32,18 +32,16 @@ class AdminController extends Controller implements HasMiddleware
     {
         $data = $request->validate([
             'name'     => ['required', 'string', 'max:255'],
-            'email'      => ['required', 'email', 'unique:users,email'],
-            'department' => ['nullable', 'string', 'max:255'],
-            'role'       => ['required', 'in:creator,supervisor,procurement,manager,viewer,admin,controller'],
-            'password'   => ['required', 'string', 'min:8'],
+            'email'    => ['required', 'email', 'unique:users,email'],
+            'role'     => ['required', 'in:creator,supervisor,procurement,manager,viewer,admin,controller'],
+            'password' => ['required', 'string', 'min:8'],
         ]);
 
         User::create([
-            'name'       => $data['name'],
-            'email'      => $data['email'],
-            'department' => $data['department'] ?? null,
-            'role'       => $data['role'],
-            'password'   => Hash::make($data['password']),
+            'name'     => $data['name'],
+            'email'    => $data['email'],
+            'role'     => $data['role'],
+            'password' => Hash::make($data['password']),
         ]);
 
         return back()->with('success', "User {$data['name']} created.");
@@ -53,14 +51,12 @@ class AdminController extends Controller implements HasMiddleware
     {
         $data = $request->validate([
             'name'     => ['required', 'string', 'max:255'],
-            'department' => ['nullable', 'string', 'max:255'],
-            'role'       => ['required', 'in:creator,supervisor,procurement,manager,viewer,admin,controller'],
-            'password'   => ['nullable', 'string', 'min:8'],
+            'role'     => ['required', 'in:creator,supervisor,procurement,manager,viewer,admin,controller'],
+            'password' => ['nullable', 'string', 'min:8'],
         ]);
 
-        $user->name       = $data['name'];
-        $user->department = $data['department'] ?? null;
-        $user->role       = $data['role'];
+        $user->name = $data['name'];
+        $user->role = $data['role'];
         if (!empty($data['password'])) {
             $user->password = Hash::make($data['password']);
         }
