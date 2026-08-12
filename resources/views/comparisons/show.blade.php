@@ -55,24 +55,44 @@
     @endif
 
     {{-- Tabs --}}
-    <ul class="nav nav-tabs mb-4" id="clvpTabs">
-        <li class="nav-item">
-            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabApproval">
-                <i class="bi bi-diagram-3 me-1"></i>Approval Workflow
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabClvp">
-                <i class="bi bi-file-earmark-spreadsheet me-1"></i>Dokumen CLVP
-            </button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabLog">
-                <i class="bi bi-journal-text me-1"></i>Audit Log
-                <span class="badge bg-secondary ms-1">{{ $comparison->logs->count() }}</span>
-            </button>
-        </li>
-    </ul>
+    <div class="d-flex justify-content-between align-items-end mb-4 border-bottom">
+        <ul class="nav nav-tabs border-bottom-0 mb-0" id="clvpTabs">
+            <li class="nav-item">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabApproval">
+                    <i class="bi bi-diagram-3 me-1"></i>Approval Workflow
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabClvp">
+                    <i class="bi bi-file-earmark-spreadsheet me-1"></i>Dokumen CLVP
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabLog">
+                    <i class="bi bi-journal-text me-1"></i>Audit Log
+                    <span class="badge bg-secondary ms-1">{{ $comparison->logs->count() }}</span>
+                </button>
+            </li>
+        </ul>
+        
+        <div class="btn-group mb-2">
+            @if ($prevId)
+                <a href="{{ route('comparisons.show', ['comparison' => $prevId] + ($statusFilter ? ['status' => $statusFilter] : [])) }}" class="btn btn-sm btn-outline-secondary fw-bold fs-5 px-3" style="line-height: 1;">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            @else
+                <button class="btn btn-sm btn-outline-secondary fw-bold fs-5 px-3 disabled" style="line-height: 1;"><i class="bi bi-chevron-left"></i></button>
+            @endif
+
+            @if ($nextId)
+                <a href="{{ route('comparisons.show', ['comparison' => $nextId] + ($statusFilter ? ['status' => $statusFilter] : [])) }}" class="btn btn-sm btn-outline-secondary fw-bold fs-5 px-3" style="line-height: 1;">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            @else
+                <button class="btn btn-sm btn-outline-secondary fw-bold fs-5 px-3 disabled" style="line-height: 1;"><i class="bi bi-chevron-right"></i></button>
+            @endif
+        </div>
+    </div>
 
     <div class="tab-content">
 
@@ -136,41 +156,8 @@
                                     </div>
                                 </li>
 
-                                {{-- Step 2: Procurement (conditional) --}}
-                                @if ($comparison->requires_procurement || $comparison->isPendingProcurement() || $comparison->procurement_approved_at)
-                                <li class="d-flex gap-3 mb-3">
-                                    <div class="text-center" style="width:28px">
-                                        @if ($comparison->procurement_approved_at)
-                                            <span class="badge bg-success rounded-circle p-2"><i class="bi bi-check-lg"></i></span>
-                                        @elseif($comparison->isRejected() && $comparison->rejectedBy?->isProcurement())
-                                            <span class="badge bg-danger rounded-circle p-2"><i class="bi bi-x-lg"></i></span>
-                                        @elseif($comparison->isPendingProcurement())
-                                            <span class="badge rounded-circle p-2 text-white" style="background:#7c3aed"><i class="bi bi-hourglass-split"></i></span>
-                                        @else
-                                            <span class="badge bg-secondary rounded-circle p-2"><i class="bi bi-dash"></i></span>
-                                        @endif
-                                        <div style="width:2px;height:30px;background:#e5e7eb;margin:4px auto"></div>
-                                    </div>
-                                    <div>
-                                        <div class="fw-semibold small">Procurement Approval</div>
-                                        @if ($comparison->procurement_approved_at)
-                                            <div class="text-muted small">{{ $comparison->procurement->name ?? '—' }}</div>
-                                            <div class="text-muted small">{{ $comparison->procurement_approved_at->format('d M Y H:i') }}</div>
-                                            @if ($comparison->procurement_notes)
-                                                <div class="mt-1 p-2 bg-light rounded small fst-italic">{{ $comparison->procurement_notes }}</div>
-                                            @endif
-                                        @elseif($comparison->isPendingProcurement())
-                                            <div class="small" style="color:#7c3aed">Waiting for Procurement review…</div>
-                                        @elseif($comparison->isApproved() && $comparison->isBypassed() && $comparison->requires_procurement)
-                                            <div class="text-muted small fst-italic">Skipped — Manager bypass</div>
-                                        @else
-                                            <div class="text-muted small">—</div>
-                                        @endif
-                                    </div>
-                                </li>
-                                @endif
 
-                                {{-- Step 3: Supervisor --}}
+                                {{-- Step 2: Supervisor --}}
                                 <li class="d-flex gap-3 mb-3">
                                     <div class="text-center" style="width:28px">
                                         @if ($comparison->supervisor_approved_at)
@@ -313,9 +300,8 @@
                         </div>
                     @endif
 
-                    {{-- Action card (procurement / supervisor / manager) --}}
+                    {{-- Action card (supervisor / manager) --}}
                     @if (
-                        (Auth::user()->isProcurement() && $comparison->isPendingProcurement()) ||
                         (Auth::user()->isSupervisor() && $comparison->isPendingSupervisor()) ||
                         (Auth::user()->isManager() && $comparison->isPendingManager()))
                         <div class="card border-warning">
@@ -332,9 +318,7 @@
                                     <textarea name="notes" class="form-control form-control-sm mb-2" rows="2" placeholder="Add a comment…"></textarea>
                                     <button type="submit" class="btn btn-success w-100">
                                         <i class="bi bi-check-circle me-2"></i>
-                                        @if (Auth::user()->isProcurement())
-                                            Approve (Send to Supervisor)
-                                        @elseif (Auth::user()->isSupervisor())
+                                        @if (Auth::user()->isSupervisor())
                                             Approve (Send to Manager)
                                         @else
                                             Approve (Final Approval)
@@ -358,7 +342,7 @@
                         </div>
                     @endif
 
-                    {{-- Manager bypass card (skip Procurement / Supervisor) --}}
+                    {{-- Manager bypass card (skip Supervisor) --}}
                     @if ($comparison->canBypassApprove(Auth::user()))
                         <div class="card border-danger mt-3">
                             <div class="card-header py-2" style="background:#fef2f2; border-color:#ef4444">
@@ -366,7 +350,7 @@
                             </div>
                             <div class="card-body">
                                 <p class="text-muted small mb-2">
-                                    The Procurement or Supervisor review step is pending but unavailable.
+                                    The Supervisor review step is pending but unavailable.
                                     As Manager, you may approve this comparison directly and close the workflow.
                                 </p>
                                 <form method="POST" action="{{ route('comparisons.bypass-approve', $comparison) }}">
@@ -374,9 +358,9 @@
                                     <label class="form-label fw-semibold small text-danger">Reason for Bypass <span
                                             class="text-danger">*</span></label>
                                     <textarea name="bypass_reason" class="form-control form-control-sm mb-2" rows="2"
-                                        placeholder="e.g. Supervisor/Procurement is on leave…" required></textarea>
+                                        placeholder="e.g. Supervisor is on leave…" required></textarea>
                                     <button type="submit" class="btn btn-success w-100"
-                                        onclick="return confirm('Are you sure you want to bypass Procurement/Supervisor approval and give final approval?')">
+                                        onclick="return confirm('Are you sure you want to bypass Supervisor approval and give final approval?')">
                                         <i class="bi bi-check-circle me-2"></i>Bypass & Final Approve
                                     </button>
                                 </form>

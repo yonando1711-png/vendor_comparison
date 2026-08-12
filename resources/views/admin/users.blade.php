@@ -40,7 +40,6 @@
                     <select name="role" class="form-select form-select-sm" required>
                         <option value="creator" {{ old('role') === 'creator' ? 'selected' : '' }}>Purchasing Staff</option>
                         <option value="supervisor" {{ old('role') === 'supervisor' ? 'selected' : '' }}>Supervisor</option>
-                        <option value="procurement" {{ old('role') === 'procurement' ? 'selected' : '' }}>Procurement</option>
                         <option value="manager" {{ old('role') === 'manager' ? 'selected' : '' }}>Manager</option>
                         <option value="viewer" {{ old('role') === 'viewer' ? 'selected' : '' }}>Viewer</option>
                         <option value="controller" {{ old('role') === 'controller' ? 'selected' : '' }}>Controller</option>
@@ -104,7 +103,6 @@
                                 <span
                                     class="badge {{ match ($u->role) {
                                         'supervisor' => 'bg-info text-dark',
-                                        'procurement' => 'bg-warning text-dark',
                                         'manager' => 'bg-primary',
                                         'admin' => 'bg-dark',
                                         'viewer' => 'bg-light text-dark border',
@@ -154,9 +152,6 @@
                                                         Purchasing Staff</option>
                                                     <option value="supervisor"
                                                         {{ $u->role === 'supervisor' ? 'selected' : '' }}>Supervisor
-                                                    </option>
-                                                    <option value="procurement"
-                                                        {{ $u->role === 'procurement' ? 'selected' : '' }}>Procurement
                                                     </option>
                                                     <option value="manager"
                                                         {{ $u->role === 'manager' ? 'selected' : '' }}>Manager</option>

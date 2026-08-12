@@ -81,6 +81,7 @@
                                 <th>Vendor</th>
                                 <th>Source Document</th>
                                 <th>Buyer</th>
+                                <th>Purchase SPV</th>
                                 <th class="text-center">Lines</th>
                                 <th>Order Deadline</th>
                                 <th class="text-end">Amount Total</th>
@@ -109,6 +110,9 @@
                                     <td class="text-muted">
                                         {{ is_array($rfq['user_id']) ? $rfq['user_id'][1] : '—' }}
                                     </td>
+                                    <td class="text-muted">
+                                        {{ is_array($rfq['purchase_spv_id'] ?? null) ? $rfq['purchase_spv_id'][1] : '—' }}
+                                    </td>
                                     <td class="text-center">
                                         <span class="badge bg-secondary rounded-pill">
                                             {{ count($rfq['order_line']) }}
@@ -130,8 +134,7 @@
                                     <td class="text-center">
                                         @if ($clvp)
                                             <a href="{{ route('comparisons.show', $clvp->id) }}"
-                                                class="badge text-decoration-none {{ $clvp->statusBadgeClass() }}"
-                                                @if($clvp->status === 'pending_procurement') style="background:#7c3aed" @endif>
+                                                class="badge text-decoration-none {{ $clvp->statusBadgeClass() }}">
                                                 {{ $clvp->statusLabel() }}
                                             </a>
                                         @else

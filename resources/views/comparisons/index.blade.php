@@ -10,15 +10,7 @@
 
     {{-- Stats cards --}}
     <div class="row g-3 mb-4">
-        <div class="col-6 col-md-2">
-            <div class="card text-center h-100" style="border-color:#7c3aed">
-                <div class="card-body py-3">
-                    <div class="display-6 fw-bold" style="color:#7c3aed">{{ $stats['pending_procurement'] }}</div>
-                    <div class="small text-muted mt-1">Pending Procurement</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-md-2">
+        <div class="col-6 col-md-3">
             <div class="card text-center border-warning h-100">
                 <div class="card-body py-3">
                     <div class="display-6 fw-bold text-warning">{{ $stats['pending_supervisor'] }}</div>
@@ -26,7 +18,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-6 col-md-2">
+        <div class="col-6 col-md-3">
             <div class="card text-center border-info h-100">
                 <div class="card-body py-3">
                     <div class="display-6 fw-bold text-info">{{ $stats['pending_manager'] }}</div>
@@ -71,7 +63,6 @@
                 <span class="input-group-text"><i class="bi bi-funnel"></i></span>
                 <select id="cmpStatus" class="form-select">
                     <option value="">All Statuses</option>
-                    <option value="pending_procurement">Pending Procurement</option>
                     <option value="pending_supervisor">Pending Supervisor</option>
                     <option value="pending_manager">Pending Manager</option>
                     <option value="approved">Approved</option>
@@ -111,8 +102,7 @@
                                         {{ $c->created_at->format('d M Y H:i') }}
                                     </td>
                                     <td class="text-center">
-                                        <span class="badge {{ $c->statusBadgeClass() }}"
-                                            @if($c->status === 'pending_procurement') style="background:#7c3aed" @endif>
+                                        <span class="badge {{ $c->statusBadgeClass() }}">
                                             {{ $c->statusLabel() }}
                                         </span>
                                         @if ($c->isRejected())
@@ -159,7 +149,6 @@
                                             class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-eye me-1"></i>View
                                             @if (
-                                                (Auth::user()->isProcurement() && $c->isPendingProcurement()) ||
                                                 (Auth::user()->isSupervisor() && $c->isPendingSupervisor()) ||
                                                 (Auth::user()->isManager() && $c->isPendingManager()) ||
                                                 $c->canBypassApprove(Auth::user()))
@@ -183,6 +172,17 @@
                     const matchesSearch = row.dataset.search.includes(q);
                     const matchesStatus = !status || row.dataset.status === status;
                     row.style.display = (matchesSearch && matchesStatus) ? '' : 'none';
+                    
+                    const viewLink = row.querySelector('a.btn-outline-primary');
+                    if (viewLink) {
+                        let url = new URL(viewLink.href);
+                        if (status) {
+                            url.searchParams.set('status', status);
+                        } else {
+                            url.searchParams.delete('status');
+                        }
+                        viewLink.href = url.toString();
+                    }
                 });
             }
 

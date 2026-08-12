@@ -130,6 +130,8 @@ class OdooService
                         'currency_id',
                         'user_id',
                         'purchase_type',
+                        'purchase_spv_id',
+                        'purchase_manager_id',
                     ],
                     'order'  => 'id desc',
                 ]
@@ -171,6 +173,8 @@ class OdooService
                     'origin',
                     'currency_id',
                     'user_id',
+                    'purchase_spv_id',
+                    'purchase_manager_id',
                     'notes'
                 ],
             ]

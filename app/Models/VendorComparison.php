@@ -21,10 +21,6 @@ class VendorComparison extends Model
         'supervisor_id',
         'supervisor_approved_at',
         'supervisor_notes',
-        'procurement_id',
-        'procurement_approved_at',
-        'procurement_notes',
-        'requires_procurement',
         'manager_id',
         'manager_approved_at',
         'manager_notes',
@@ -44,17 +40,15 @@ class VendorComparison extends Model
     ];
 
     protected $casts = [
-        'vendors'                => 'array',
-        'vendor_prices'          => 'array',
-        'supervisor_approved_at'  => 'datetime',
-        'procurement_approved_at' => 'datetime',
-        'manager_approved_at'     => 'datetime',
-        'bypassed_at'             => 'datetime',
-        'requires_procurement'    => 'boolean',
-        'rejected_at'            => 'datetime',
-        'odoo_synced_at'         => 'datetime',
-        'cancelled_at'                  => 'datetime',
-        'controller_acknowledged_at'    => 'datetime',
+        'vendors'                    => 'array',
+        'vendor_prices'              => 'array',
+        'supervisor_approved_at'     => 'datetime',
+        'manager_approved_at'        => 'datetime',
+        'bypassed_at'                => 'datetime',
+        'rejected_at'                => 'datetime',
+        'odoo_synced_at'             => 'datetime',
+        'cancelled_at'               => 'datetime',
+        'controller_acknowledged_at' => 'datetime',
     ];
 
     // ── Relationships ──────────────────────────────────────
@@ -72,11 +66,6 @@ class VendorComparison extends Model
     public function manager()
     {
         return $this->belongsTo(User::class, 'manager_id');
-    }
-
-    public function procurement()
-    {
-        return $this->belongsTo(User::class, 'procurement_id');
     }
 
     public function rejectedBy()
@@ -108,7 +97,7 @@ class VendorComparison extends Model
 
     public function isEditableBy(\App\Models\User $user): bool
     {
-        return ($this->isPendingSupervisor() || $this->isPendingProcurement())
+        return $this->isPendingSupervisor()
             && $user->isCreator()
             && $this->created_by === $user->id;
     }
@@ -119,41 +108,37 @@ class VendorComparison extends Model
     {
         return $this->status === 'pending_supervisor';
     }
-    public function isPendingProcurement(): bool
-    {
-        return $this->status === 'pending_procurement';
-    }
+
     public function isPendingManager(): bool
     {
         return $this->status === 'pending_manager';
     }
 
     /**
-     * Flow: pending_supervisor is the SECOND step (after optional procurement).
-     * Staff submits → pending_procurement (if required) OR pending_supervisor
+     * Flow: Staff → Supervisor → Manager
      */
     public function isInActiveApproval(): bool
     {
-        return in_array($this->status, ['pending_procurement', 'pending_supervisor', 'pending_manager']);
+        return in_array($this->status, ['pending_supervisor', 'pending_manager']);
     }
+
     public function isApproved(): bool
     {
         return $this->status === 'approved';
     }
+
     public function isRejected(): bool
     {
         return $this->status === 'rejected';
     }
+
     public function isCancelled(): bool
     {
         return $this->status === 'cancelled';
     }
+
     public function isCancellableBy(\App\Models\User $user): bool
     {
-        // Procurement can cancel when supervisor hasn't acted yet (they are step 1)
-        if ($user->isProcurement() && $this->isPendingSupervisor()) {
-            return true;
-        }
         // Supervisor can cancel when manager hasn't acted yet
         if ($user->isSupervisor() && $this->isPendingManager()) {
             return true;
@@ -168,7 +153,7 @@ class VendorComparison extends Model
     public function canBypassApprove(\App\Models\User $user): bool
     {
         return $user->isManager()
-            && ($this->isPendingProcurement() || $this->isPendingSupervisor());
+            && $this->isPendingSupervisor();
     }
 
     public function isBypassed(): bool
@@ -204,85 +189,14 @@ class VendorComparison extends Model
         return preg_replace('/\s+/', ' ', strtolower(trim($desc)));
     }
 
-    /**
-     * Evaluate whether automatic conditions trigger Procurement review.
-     * Note: The staff can also manually flag via the toggle at submission.
-     * Rules (ANY one is sufficient):
-     *   1. product never purchased before (no history entry for this product+description)
-     *   2. qty >= 25
-     *   3. line total (best price * qty) >= 5,000,000
-     *
-     * History is keyed by "product_id::normalized_description" so that generic-code
-     * products (e.g. [GA], [ATK]) sharing the same product_id are differentiated
-     * by what was actually ordered (Approach A: normalize + exact match).
-     *
-     * @param array $vendorPrices  stored vendor_prices rows
-     * @param array $history       "product_id::desc" => vendor history from Odoo
-     * @param array $rfqLines      RFQ lines from Odoo
-     */
-    public static function checkRequiresProcurement(
-        array $vendorPrices,
-        array $history,
-        array $rfqLines,
-        string $selectedVendor = '',
-        array $vendors = []
-    ): bool {
-        // Find the column index of the selected vendor
-        $selectedIdx = null;
-        if ($selectedVendor !== '' && !empty($vendors)) {
-            foreach ($vendors as $i => $v) {
-                if (($v['name'] ?? '') === $selectedVendor) {
-                    $selectedIdx = $i;
-                    break;
-                }
-            }
-        }
-
-        foreach ($vendorPrices as $row) {
-            $qty    = (float) ($row['qty'] ?? 0);
-            $allPrices = array_filter((array) ($row['prices'] ?? []), fn($p) => (float) $p > 0);
-
-            // Use selected vendor price if known, else min across all
-            if ($selectedIdx !== null && isset($row['prices'][$selectedIdx])) {
-                $unitPrice = (float) $row['prices'][$selectedIdx];
-            } else {
-                $unitPrice = !empty($allPrices) ? min(array_map('floatval', $allPrices)) : 0;
-            }
-
-            $lineTotal = $unitPrice * $qty;
-
-            if ($qty >= 25) {
-                return true;
-            }
-
-            if ($unitPrice > 0 && $lineTotal >= 5_000_000) {
-                return true;
-            }
-        }
-
-        foreach ($rfqLines as $line) {
-            if (!is_array($line['product_id'])) {
-                continue;
-            }
-            $productId  = $line['product_id'][0];
-            $historyKey = $productId . '::' . self::normalizeDescription($line['name'] ?? '');
-            if (empty($history[$historyKey])) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     public function statusLabel(): string
     {
         return match ($this->status) {
-            'pending_supervisor'  => 'Pending Supervisor',
-            'pending_procurement' => 'Pending Procurement',
-            'pending_manager'     => 'Pending Manager',
-            'approved'            => 'Approved',
-            'rejected'            => 'Rejected',
-            'cancelled'           => 'Cancelled',
+            'pending_supervisor' => 'Pending Supervisor',
+            'pending_manager'    => 'Pending Manager',
+            'approved'           => 'Approved',
+            'rejected'           => 'Rejected',
+            'cancelled'          => 'Cancelled',
             default              => 'Draft',
         };
     }
@@ -290,12 +204,11 @@ class VendorComparison extends Model
     public function statusBadgeClass(): string
     {
         return match ($this->status) {
-            'pending_supervisor'  => 'bg-warning text-dark',
-            'pending_procurement' => 'text-white',
-            'pending_manager'     => 'bg-info text-dark',
-            'approved'            => 'bg-success',
-            'rejected'            => 'bg-danger',
-            'cancelled'           => 'bg-secondary',
+            'pending_supervisor' => 'bg-warning text-dark',
+            'pending_manager'    => 'bg-info text-dark',
+            'approved'           => 'bg-success',
+            'rejected'           => 'bg-danger',
+            'cancelled'          => 'bg-secondary',
             default              => 'bg-secondary',
         };
     }
