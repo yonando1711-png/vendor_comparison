@@ -48,6 +48,15 @@
                     </select>
                 </div>
                 <div class="col-md-2">
+                    <label class="form-label form-label-sm fw-semibold">Department</label>
+                    <input type="text" name="department"
+                        class="form-control form-control-sm @error('department') is-invalid @enderror"
+                        value="{{ old('department') }}" placeholder="e.g. HR">
+                    @error('department')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+                <div class="col-md-2">
                     <label class="form-label form-label-sm fw-semibold">Password</label>
                     <input type="password" name="password"
                         class="form-control form-control-sm @error('password') is-invalid @enderror" required minlength="8"
@@ -73,6 +82,7 @@
                     <tr>
                         <th class="ps-3">Name</th>
                         <th>Email</th>
+                        <th class="text-center">Department</th>
                         <th class="text-center">Role</th>
                         <th class="text-center">Comparisons Created</th>
                         <th class="text-center">Joined</th>
@@ -89,6 +99,7 @@
                                 @endif
                             </td>
                             <td class="text-muted">{{ $u->email }}</td>
+                            <td class="text-center text-muted small">{{ $u->department ?: '-' }}</td>
                             <td class="text-center">
                                 <span
                                     class="badge {{ match ($u->role) {
@@ -158,6 +169,11 @@
                                                     <option value="admin" {{ $u->role === 'admin' ? 'selected' : '' }}>
                                                         Admin</option>
                                                 </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">Department</label>
+                                                <input type="text" name="department" class="form-control"
+                                                    value="{{ $u->department }}">
                                             </div>
                                             <div class="mb-3">
                                                 <label class="form-label fw-semibold">New Password <span
