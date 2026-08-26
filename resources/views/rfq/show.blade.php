@@ -266,7 +266,7 @@
                                                             ? $line['product_uom'][1]
                                                             : '';
                                                     @endphp
-                                                    <tr data-row="{{ $lineIdx }}" data-pricelist="{{ $line['price_unit'] }}" data-linename="{{ $line['name'] ?? '' }}">
+                                                    <tr data-row="{{ $lineIdx }}" data-pricelist="{{ $line['price_unit'] }}" data-qty="{{ $line['product_qty'] }}" data-fixdiscount="{{ $line['fix_discount'] ?? 0 }}" data-linename="{{ $line['name'] ?? '' }}">
                                                         <td class="text-center">{{ $lineIdx + 1 }}</td>
                                                         <td>
                                                             <div class="fw-semibold">{{ $pName }}</div>
@@ -663,6 +663,16 @@
                             return parseFloat(row?.dataset.pricelist || 0);
                         }
 
+                        function getRowQty(rowIdx) {
+                            const row = document.querySelector(`#priceMatrixBody tr[data-row="${rowIdx}"]`);
+                            return parseFloat(row?.dataset.qty || 1);
+                        }
+
+                        function getRowFixDiscount(rowIdx) {
+                            const row = document.querySelector(`#priceMatrixBody tr[data-row="${rowIdx}"]`);
+                            return parseFloat(row?.dataset.fixdiscount || 0);
+                        }
+
                         function rowHasPricelist(rowIdx) {
                             const inp = document.getElementById(`pricelistOriInput_${rowIdx}`);
                             if (inp) {
@@ -672,11 +682,64 @@
                             return false;
                         }
 
+                        function formatRp(n) {
+                            return 'Rp ' + Math.round(n).toLocaleString('id-ID');
+                        }
+
+                        function buildNetHint(rowIdx, idx, value) {
+                            const qty = getRowQty(rowIdx);
+                            const fixDiscount = getRowFixDiscount(rowIdx);
+                            if (fixDiscount <= 0 || !value || value <= 0) return '';
+                            const perUnitFix = qty > 0 ? fixDiscount / qty : 0;
+                            const net = Math.max(0, value - perUnitFix);
+                            return `
+                                <div class="text-end fw-bold" id="netDisplay_${rowIdx}_${idx}" style="font-size:.75rem;">Net ${formatRp(net)}</div>
+                                <div class="text-end text-muted" id="calcHint_${rowIdx}_${idx}" style="font-size:.65rem;">${formatRp(value)} − ${formatRp(perUnitFix)}</div>`;
+                        }
+
+                        function updateNetDisplay(rowIdx, idx) {
+                            const inp = document.getElementById(`priceInput_${rowIdx}_${idx}`);
+                            if (!inp) return;
+                            const value = parseFloat(inp.value) || 0;
+                            const qty = getRowQty(rowIdx);
+                            const fixDiscount = getRowFixDiscount(rowIdx);
+                            let netEl = document.getElementById(`netDisplay_${rowIdx}_${idx}`);
+                            let calcEl = document.getElementById(`calcHint_${rowIdx}_${idx}`);
+
+                            if (fixDiscount <= 0 || value <= 0) {
+                                if (netEl) netEl.style.display = 'none';
+                                if (calcEl) calcEl.style.display = 'none';
+                                return;
+                            }
+
+                            const perUnitFix = qty > 0 ? fixDiscount / qty : 0;
+                            const net = Math.max(0, value - perUnitFix);
+
+                            if (!netEl) {
+                                netEl = document.createElement('div');
+                                netEl.id = `netDisplay_${rowIdx}_${idx}`;
+                                netEl.className = 'text-end fw-bold';
+                                netEl.style.fontSize = '.75rem';
+                                inp.closest('.input-group').insertAdjacentElement('beforebegin', netEl);
+                            }
+                            if (!calcEl) {
+                                calcEl = document.createElement('div');
+                                calcEl.id = `calcHint_${rowIdx}_${idx}`;
+                                calcEl.className = 'text-end text-muted';
+                                calcEl.style.fontSize = '.65rem';
+                                inp.closest('.input-group').insertAdjacentElement('beforebegin', calcEl);
+                            }
+                            netEl.style.display = '';
+                            calcEl.style.display = '';
+                            netEl.textContent = `Net ${formatRp(net)}`;
+                            calcEl.textContent = `${formatRp(value)} − ${formatRp(perUnitFix)}`;
+                        }
+
                         function buildPriceCell(rowIdx, idx, sparepart) {
                             const pricelist = getRowPricelist(rowIdx);
                             const hasPl = sparepart ? pricelist > 0 : rowHasPricelist(rowIdx);
                             if (hasPl) {
-                                // Sparepart / pricelist mode: input stores DISCOUNTED price per vendor
+                                // Sparepart / pricelist mode: input stores DISCOUNTED price per vendor (before fixed discount)
                                 const discInp = document.querySelector(`[name="vendors[${idx}][discount]"]`);
                                 const disc    = discInp ? (parseFloat(discInp.value) || 0) : 0;
                                 const discounted = Math.round(pricelist * (1 - disc / 100));
@@ -685,14 +748,17 @@
                                     ? `Disk ${disc}% dari Rp ${pricelist.toLocaleString('id-ID')}`
                                     : (disc > 0 ? `Disk ${disc}% dari Rp ${pricelist.toLocaleString('id-ID')}` : '');
                                 const hint = `<div class="text-end text-muted" id="discHint_${rowIdx}_${idx}" style="font-size:.7rem;">${hintText}</div>`;
+                                const netHint = buildNetHint(rowIdx, idx, discounted);
                                 return `
                             ${hint}
+                            ${netHint}
                             <div class="input-group input-group-sm">
                                 <input type="number" min="0" step="1"
                                     class="form-control form-control-sm text-end price-input"
                                     name="vendor_prices[${rowIdx}][prices][${idx}]"
                                     id="priceInput_${rowIdx}_${idx}"
                                     value="${discounted}"
+                                    oninput="updateNetDisplay(${rowIdx}, ${idx})"
                                     placeholder="0">
                             </div>
                             <div class="form-check mt-1" style="display:none;">
@@ -702,12 +768,15 @@
                                 <label class="form-check-label small text-muted" for="tj_${rowIdx}_${idx}">Tidak Menjual Barang</label>
                             </div>`;
                             } else {
+                                const netHint = buildNetHint(rowIdx, idx, 0);
                                 return `
+                            ${netHint}
                             <div class="input-group input-group-sm">
                                 <input type="number" min="0" step="1"
                                     class="form-control form-control-sm text-end price-input"
                                     name="vendor_prices[${rowIdx}][prices][${idx}]"
                                     id="priceInput_${rowIdx}_${idx}"
+                                    oninput="updateNetDisplay(${rowIdx}, ${idx})"
                                     placeholder="0">
                             </div>
                             <div class="form-check mt-1" style="display:none;">
@@ -744,6 +813,7 @@
                                                 ? `Disk ${disc}% dari Rp ${pricelist.toLocaleString('id-ID')}`
                                                 : (disc > 0 ? `Disk ${disc}% dari Rp ${pricelist.toLocaleString('id-ID')}` : '');
                                         }
+                                        updateNetDisplay(rowIdx, idx);
                                     } else {
                                         // No pricelist: rebuild to manual input
                                         td.innerHTML = buildPriceCell(rowIdx, idx, sparepart);
@@ -774,6 +844,7 @@
                                         ? `Disk ${disc}% dari Rp ${pricelist.toLocaleString('id-ID')}`
                                         : (disc > 0 ? `Disk ${disc}% dari Rp ${pricelist.toLocaleString('id-ID')}` : '');
                                 }
+                                updateNetDisplay(rowIdx, idx);
                             });
                         }
 
@@ -850,6 +921,7 @@
                             if (input) {
                                 input.disabled = cb.checked;
                                 if (cb.checked) input.value = 0;
+                                updateNetDisplay(rowIdx, vendorIdx);
                             }
                             refreshRecommendation();
                         }
@@ -910,6 +982,7 @@
                                 const rowIdx = row.dataset.row;
                                 const qtyEl = row.querySelector(`[name="vendor_prices[${rowIdx}][qty]"]`);
                                 const qty = qtyEl ? (parseFloat(qtyEl.value) || 1) : 1;
+                                const fixDiscount = getRowFixDiscount(parseInt(rowIdx));
 
                                 vendorIndices.forEach(idx => {
                                     if (effective[idx] === Infinity) return;
@@ -922,8 +995,8 @@
                                         `[name="vendor_prices[${rowIdx}][prices][${idx}]"]`);
                                     const val = priceInput ? parseFloat(priceInput.value) : 0;
                                     if (val <= 0) return;
-                                    // Input stores final price (discounted or manual), use as-is
-                                    effective[idx] += val * qty;
+                                    // Input is per-unit gross; net line total subtracts the Odoo fixed discount
+                                    effective[idx] += Math.max(0, val * qty - fixDiscount);
                                 });
                             });
 

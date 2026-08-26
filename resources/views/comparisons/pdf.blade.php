@@ -265,6 +265,9 @@
                     $rl = $rfqProductLines[$ri] ?? null;
                     $pCode = $rl ? $rl['product_code'] ?? '' : $row['product_code'] ?? '';
                     $pName = $rl ? $rl['name'] : $row['product_name'] ?? '';
+                    $rowFixDiscount = (float) ($rl['fix_discount'] ?? 0);
+                    $rowQty = (float) ($row['qty'] ?? 1);
+                    $rowPerUnitFix = $rowQty > 0 ? $rowFixDiscount / $rowQty : 0;
                 @endphp
                 <tr>
                     <td class="text-center">{{ $ri + 1 }}</td>
@@ -295,13 +298,21 @@
                             $dRate = isset($dm[0]) ? (float) $dm[0] / 100 : 0;
                             // Backward-compat: old sparepart stored base price. If price ≈ pricelist, apply discount.
                             $isBasePrice = $pricelist > 0 && $price !== null && abs((float)$price - $pricelist) < 2;
-                            $displayPrice = $isBasePrice && $dRate > 0 ? (float)$price * (1 - $dRate) : (float)$price;
+                            $grossPrice = $isBasePrice && $dRate > 0 ? (float)$price * (1 - $dRate) : (float)$price;
+                            $displayPrice = max(0, $grossPrice - $rowPerUnitFix);
                         @endphp
-                        <td class="text-right {{ $isRec ? 'rec-cell' : '' }}">
+                        <td class="text-right {{ $isRec ? 'rec-cell' : '' }}" style="vertical-align:top;">
                             @if ($price === null || $price === '' || $price == 0)
                                 <span class="text-muted">Tidak Menjual Barang</span>
                             @else
-                                {{ $currency }}{{ number_format($displayPrice, 0, ',', '.') }}
+                                @if ($rowFixDiscount > 0 && $grossPrice > 0)
+                                    <div style="font-weight:bold;">{{ $currency }}{{ number_format($displayPrice, 0, ',', '.') }}</div>
+                                    <div style="font-size:8px; color:#666;">
+                                        {{ number_format($grossPrice, 0, ',', '.') }} − {{ number_format($rowPerUnitFix, 0, ',', '.') }}
+                                    </div>
+                                @else
+                                    {{ $currency }}{{ number_format($displayPrice, 0, ',', '.') }}
+                                @endif
                             @endif
                         </td>
                     @endforeach
@@ -366,14 +377,16 @@
                         $vTotal = 0;
                         preg_match('/[\d.]+/', $v['discount'] ?? '', $dm);
                         $dRate = isset($dm[0]) ? (float) $dm[0] / 100 : 0;
-                        foreach ($vpRows as $row) {
+                        foreach ($vpRows as $ri => $row) {
                             $p = (float) ($row['prices'][$vi] ?? 0);
                             $qty = (float) ($row['qty'] ?? 1);
                             $pricelist = (float) ($row['pricelist_original'] ?? 0);
+                            $rl2 = $rfqProductLines[$ri] ?? null;
+                            $rowFixDiscount2 = (float) ($rl2['fix_discount'] ?? 0);
                             // Backward-compat: if stored price ≈ pricelist, it was base price
                             $isBasePrice = $pricelist > 0 && abs($p - $pricelist) < 2;
-                            $finalPrice = $isBasePrice && $dRate > 0 ? $p * (1 - $dRate) : $p;
-                            $vTotal += $finalPrice * $qty;
+                            $grossPrice = $isBasePrice && $dRate > 0 ? $p * (1 - $dRate) : $p;
+                            $vTotal += max(0, $grossPrice * $qty - $rowFixDiscount2);
                         }
                         $isRec = ($v['name'] ?? '') === $comparison->selected_vendor;
                     @endphp
