@@ -213,7 +213,9 @@ class OdooService
                     'price_unit',
                     'price_subtotal',
                     'name',
-                    'product_uom'
+                    'product_uom',
+                    'discount',
+                    'fix_discount',
                 ],
             ]
         );

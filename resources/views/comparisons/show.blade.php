@@ -889,6 +889,15 @@
                     $vendors = $comparison->vendors ?? [];
                     $vpRows = $comparison->vendor_prices ?? [];
                     $currency = 'Rp';
+                    $showFixDiscount = false;
+                    if (!empty($rfq['lines'])) {
+                        foreach ($rfq['lines'] as $l) {
+                            if ((is_array($l['product_id'] ?? null)) && !empty($l['fix_discount'])) {
+                                $showFixDiscount = true;
+                                break;
+                            }
+                        }
+                    }
                 @endphp
 
                 <table style="width:100%; border-collapse:collapse; font-size:11px;">
@@ -909,6 +918,11 @@
                             <th rowspan="2"
                                 style="border:1px solid #000; padding:4px 6px; text-align:center; width:90px;">Pricelist
                                 Original</th>
+                            @if ($showFixDiscount)
+                                <th rowspan="2"
+                                    style="border:1px solid #000; padding:4px 6px; text-align:center; width:90px;">Fix
+                                    Discount</th>
+                            @endif
                             @if (!empty($vendors))
                                 <th colspan="{{ count($vendors) }}"
                                     style="border:1px solid #000; padding:4px 6px; text-align:center; background:#f0f0f0;">
@@ -981,6 +995,11 @@
                                 <td style="border:1px solid #000; padding:4px 6px; text-align:right;">
                                     {{ number_format($row['pricelist_original'] ?? 0, 0, ',', '.') }}
                                 </td>
+                                @if ($showFixDiscount)
+                                    <td style="border:1px solid #000; padding:4px 6px; text-align:right;">
+                                        {{ !empty($rl['fix_discount']) ? number_format((float) $rl['fix_discount'], 0, ',', '.') : '-' }}
+                                    </td>
+                                @endif
                                 @foreach ($vendors as $vi => $v)
                                     @php
                                         $price = $row['prices'][$vi] ?? null;
@@ -1013,6 +1032,9 @@
                                 <td style="border:1px solid #000;"></td>
                                 <td style="border:1px solid #000;"></td>
                                 <td style="border:1px solid #000;"></td>
+                                @if ($showFixDiscount)
+                                    <td style="border:1px solid #000;"></td>
+                                @endif
                                 @foreach ($vendors as $v)
                                     @php $isRec = ($v['name'] ?? '') === $comparison->selected_vendor; @endphp
                                     <td
@@ -1032,6 +1054,9 @@
                                 <td style="border:1px solid #000;"></td>
                                 <td style="border:1px solid #000;"></td>
                                 <td style="border:1px solid #000;"></td>
+                                @if ($showFixDiscount)
+                                    <td style="border:1px solid #000;"></td>
+                                @endif
                                 @foreach ($vendors as $v)
                                     <td style="border:1px solid #000;"></td>
                                 @endforeach
@@ -1052,6 +1077,9 @@
                                 @endphp
                                 {{ $currency }}{{ number_format($origTotal, 0, ',', '.') }}
                             </td>
+                            @if ($showFixDiscount)
+                                <td style="border:1px solid #000; padding:4px 6px; text-align:right;">-</td>
+                            @endif
                             @foreach ($vendors as $vi => $v)
                                 @php
                                     $vTotal = 0;
@@ -1077,7 +1105,7 @@
 
                         {{-- Availability row --}}
                         <tr>
-                            <td colspan="6" style="border:1px solid #000; padding:3px 6px;"></td>
+                            <td colspan="{{ $showFixDiscount ? 7 : 6 }}" style="border:1px solid #000; padding:3px 6px;"></td>
                             @foreach ($vendors as $v)
                                 @php $isRec = ($v['name'] ?? '') === $comparison->selected_vendor; @endphp
                                 <td
@@ -1105,7 +1133,7 @@
                         {{-- Indent duration row --}}
                         @if (collect($vendors)->contains(fn($v) => !empty($v['indent_duration'])))
                             <tr>
-                                <td colspan="6"
+                                <td colspan="{{ $showFixDiscount ? 7 : 6 }}"
                                     style="border:1px solid #000; padding:3px 6px; font-size:10px; font-style:italic; color:#c05c00;">
                                     Durasi Indent</td>
                                 @foreach ($vendors as $v)
@@ -1120,7 +1148,7 @@
 
                         {{-- Tax info --}}
                         <tr>
-                            <td colspan="6" style="border:1px solid #000; padding:3px 6px;"></td>
+                            <td colspan="{{ $showFixDiscount ? 7 : 6 }}" style="border:1px solid #000; padding:3px 6px;"></td>
                             @foreach ($vendors as $v)
                                 @php $isRec = ($v['name'] ?? '') === $comparison->selected_vendor; @endphp
                                 <td
@@ -1132,7 +1160,7 @@
 
                         {{-- Payment terms --}}
                         <tr>
-                            <td colspan="6" style="border:1px solid #000; padding:3px 6px;"></td>
+                            <td colspan="{{ $showFixDiscount ? 7 : 6 }}" style="border:1px solid #000; padding:3px 6px;"></td>
                             @foreach ($vendors as $v)
                                 @php $isRec = ($v['name'] ?? '') === $comparison->selected_vendor; @endphp
                                 <td
@@ -1151,7 +1179,7 @@
                         {{-- Payment method --}}
                         @if (collect($vendors)->where('payment_method', '!=', '')->count() > 0)
                             <tr>
-                                <td colspan="6" style="border:1px solid #000; padding:3px 6px;"></td>
+                                <td colspan="{{ $showFixDiscount ? 7 : 6 }}" style="border:1px solid #000; padding:3px 6px;"></td>
                                 @foreach ($vendors as $v)
                                     @php $isRec = ($v['name'] ?? '') === $comparison->selected_vendor; @endphp
                                     <td

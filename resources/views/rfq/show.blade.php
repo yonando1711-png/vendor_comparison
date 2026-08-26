@@ -244,6 +244,7 @@
                                                     <th class="text-center" style="width:60px">Qty</th>
                                                     <th class="text-center" style="width:60px">UoM</th>
                                                     <th class="text-center" style="width:120px">Pricelist Ori (Rp)<div class="fw-normal text-muted" style="font-size:.7rem">Opsional</div></th>
+                                                    <th class="text-center" style="width:120px">Fix Discount (Rp)</th>
                                                     {{-- vendor columns injected by JS --}}
                                                 </tr>
                                             </thead>
@@ -304,6 +305,9 @@
                                                                 value="{{ $line['price_unit'] > 0 ? $line['price_unit'] : '' }}"
                                                                 placeholder="Opsional"
                                                                 oninput="onPricelistChange({{ $lineIdx }}, this.value)">
+                                                        </td>
+                                                        <td class="text-end">
+                                                            {{ !empty($line['fix_discount']) ? number_format((float) $line['fix_discount'], 0, ',', '.') : '-' }}
                                                         </td>
                                                         {{-- price input cells injected by JS --}}
                                                     </tr>
