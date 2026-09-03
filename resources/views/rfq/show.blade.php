@@ -244,7 +244,6 @@
                                                     <th class="text-center" style="width:60px">Qty</th>
                                                     <th class="text-center" style="width:60px">UoM</th>
                                                     <th class="text-center" style="width:120px">Pricelist Ori (Rp)<div class="fw-normal text-muted" style="font-size:.7rem">Opsional</div></th>
-                                                    <th class="text-center" style="width:120px">Fix Discount (Rp)</th>
                                                     {{-- vendor columns injected by JS --}}
                                                 </tr>
                                             </thead>
@@ -265,9 +264,6 @@
                                                         $uom = is_array($line['product_uom'])
                                                             ? $line['product_uom'][1]
                                                             : '';
-                                                        $savedFix = ($prefillSource && !empty($prefillSource->vendor_prices[$lineIdx]['fix_discount']))
-                                                            ? $prefillSource->vendor_prices[$lineIdx]['fix_discount']
-                                                            : ($line['fix_discount'] ?? 0);
                                                     @endphp
                                                     <tr data-row="{{ $lineIdx }}" data-pricelist="{{ $line['price_unit'] }}" data-linename="{{ $line['name'] ?? '' }}">
                                                         <td class="text-center">{{ $lineIdx + 1 }}</td>
@@ -308,14 +304,6 @@
                                                                 value="{{ $line['price_unit'] > 0 ? $line['price_unit'] : '' }}"
                                                                 placeholder="Opsional"
                                                                 oninput="onPricelistChange({{ $lineIdx }}, this.value)">
-                                                        </td>
-                                                        <td class="p-1">
-                                                            <input type="number" min="0" step="1"
-                                                                class="form-control form-control-sm text-end fix-discount-input"
-                                                                id="fixDiscountInput_{{ $lineIdx }}"
-                                                                name="vendor_prices[{{ $lineIdx }}][fix_discount]"
-                                                                value="{{ $savedFix > 0 ? $savedFix : '' }}"
-                                                                placeholder="0">
                                                         </td>
                                                         {{-- price input cells injected by JS --}}
                                                     </tr>
@@ -536,13 +524,36 @@
                                         <option value="Tanpa PPN">Tanpa PPN</option>
                                     </select>
                                 </div>
-                                <div class="col-md-3">
-                                    <label class="form-label small fw-semibold mb-1">Diskon (%)</label>
-                                    <input type="number" class="form-control form-control-sm"
-                                        name="vendors[${idx}][discount]"
-                                        placeholder="e.g., 10"
-                                        min="0" max="100" step="0.01"
-                                        oninput="recalcDiscountForVendor(${idx})">
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-semibold mb-1">Tipe Diskon</label>
+                                    <div class="d-flex gap-3 mb-2">
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input discount-type-radio" type="radio"
+                                                name="vendors[${idx}][discount_type]" value="percent" id="dt_percent_${idx}"
+                                                checked onchange="toggleDiscountType(${idx})">
+                                            <label class="form-check-label small" for="dt_percent_${idx}">Diskon %</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input discount-type-radio" type="radio"
+                                                name="vendors[${idx}][discount_type]" value="fixed" id="dt_fixed_${idx}"
+                                                onchange="toggleDiscountType(${idx})">
+                                            <label class="form-check-label small" for="dt_fixed_${idx}">Fix Diskon</label>
+                                        </div>
+                                    </div>
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <input type="number" class="form-control form-control-sm" id="disc_pct_${idx}"
+                                                name="vendors[${idx}][discount]"
+                                                placeholder="e.g., 10" min="0" max="100" step="0.01"
+                                                oninput="recalcDiscountForVendor(${idx})">
+                                        </div>
+                                        <div class="col-6">
+                                            <input type="number" class="form-control form-control-sm" id="disc_fix_${idx}"
+                                                name="vendors[${idx}][fix_discount]"
+                                                placeholder="e.g., 100000" min="0" step="1"
+                                                oninput="recalcDiscountForVendor(${idx})" readonly>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label small fw-semibold mb-1">Ketentuan Lain-lain dari Calon Supplier</label>
@@ -574,6 +585,16 @@
                             const rb = document.querySelector(`[name="vendors[${idx}][availability]"]:checked`);
                             const wrap = document.getElementById(`indent_dur_wrap_${idx}`);
                             if (wrap) wrap.style.display = (rb && rb.value === 'indent') ? '' : 'none';
+                        }
+
+                        function toggleDiscountType(idx) {
+                            const type = document.querySelector(`[name="vendors[${idx}][discount_type]"]:checked`)?.value || 'percent';
+                            const pctInp = document.getElementById(`disc_pct_${idx}`);
+                            const fixInp = document.getElementById(`disc_fix_${idx}`);
+                            if (pctInp) pctInp.readOnly = type !== 'percent';
+                            if (fixInp) fixInp.readOnly = type !== 'fixed';
+                            recalcDiscountForVendor(idx);
+                            refreshRecommendation();
                         }
 
                         function removeVendorCard(idx) {
@@ -684,14 +705,22 @@
                             const pricelist = getRowPricelist(rowIdx);
                             const hasPl = sparepart ? pricelist > 0 : rowHasPricelist(rowIdx);
                             if (hasPl) {
-                                // Sparepart / pricelist mode: input stores DISCOUNTED price per vendor
                                 const discInp = document.querySelector(`[name="vendors[${idx}][discount]"]`);
                                 const disc    = discInp ? (parseFloat(discInp.value) || 0) : 0;
-                                const discounted = Math.round(pricelist * (1 - disc / 100));
-                                // Hint shows discount detail
-                                const hintText = sparepart
-                                    ? `Disk ${disc}% dari Rp ${pricelist.toLocaleString('id-ID')}`
-                                    : (disc > 0 ? `Disk ${disc}% dari Rp ${pricelist.toLocaleString('id-ID')}` : '');
+                                const typeInp = document.querySelector(`[name="vendors[${idx}][discount_type]"]:checked`);
+                                const discountType = typeInp ? typeInp.value : 'percent';
+                                let value, hintText;
+                                if (discountType === 'fixed') {
+                                    value = pricelist;
+                                    const fixInp = document.querySelector(`[name="vendors[${idx}][fix_discount]"]`);
+                                    const fix    = fixInp ? (parseFloat(fixInp.value) || 0) : 0;
+                                    hintText = fix > 0 ? `Fix Disc Rp ${fix.toLocaleString('id-ID')}` : '';
+                                } else {
+                                    value = Math.round(pricelist * (1 - disc / 100));
+                                    hintText = sparepart
+                                        ? `Disk ${disc}% dari Rp ${pricelist.toLocaleString('id-ID')}`
+                                        : (disc > 0 ? `Disk ${disc}% dari Rp ${pricelist.toLocaleString('id-ID')}` : '');
+                                }
                                 const hint = `<div class="text-end text-muted" id="discHint_${rowIdx}_${idx}" style="font-size:.7rem;">${hintText}</div>`;
                                 return `
                             ${hint}
@@ -700,7 +729,7 @@
                                     class="form-control form-control-sm text-end price-input"
                                     name="vendor_prices[${rowIdx}][prices][${idx}]"
                                     id="priceInput_${rowIdx}_${idx}"
-                                    value="${discounted}"
+                                    value="${value}"
                                     placeholder="0">
                             </div>
                             <div class="form-check mt-1" style="display:none;">
@@ -741,16 +770,27 @@
                                 if (td) {
                                     const hasPl = sparepart ? pricelist > 0 : rowHasPricelist(rowIdx);
                                     if (hasPl) {
+                                        const typeInp = document.querySelector(`[name="vendors[${idx}][discount_type]"]:checked`);
+                                        const discountType = typeInp ? typeInp.value : 'percent';
                                         const discInp = document.querySelector(`[name="vendors[${idx}][discount]"]`);
                                         const disc = discInp ? (parseFloat(discInp.value) || 0) : 0;
-                                        const discounted = Math.round(pricelist * (1 - disc / 100));
                                         const inp = td.querySelector(`#priceInput_${rowIdx}_${idx}`);
-                                        if (inp) inp.value = discounted;
                                         const hintEl = document.getElementById(`discHint_${rowIdx}_${idx}`);
-                                        if (hintEl) {
-                                            hintEl.textContent = sparepart
-                                                ? `Disk ${disc}% dari Rp ${pricelist.toLocaleString('id-ID')}`
-                                                : (disc > 0 ? `Disk ${disc}% dari Rp ${pricelist.toLocaleString('id-ID')}` : '');
+                                        if (discountType === 'fixed') {
+                                            if (inp) inp.value = Math.round(pricelist);
+                                            if (hintEl) {
+                                                const fixInp = document.querySelector(`[name="vendors[${idx}][fix_discount]"]`);
+                                                const fix = fixInp ? (parseFloat(fixInp.value) || 0) : 0;
+                                                hintEl.textContent = fix > 0 ? `Fix Disc Rp ${fix.toLocaleString('id-ID')}` : '';
+                                            }
+                                        } else {
+                                            const discounted = Math.round(pricelist * (1 - disc / 100));
+                                            if (inp) inp.value = discounted;
+                                            if (hintEl) {
+                                                hintEl.textContent = sparepart
+                                                    ? `Disk ${disc}% dari Rp ${pricelist.toLocaleString('id-ID')}`
+                                                    : (disc > 0 ? `Disk ${disc}% dari Rp ${pricelist.toLocaleString('id-ID')}` : '');
+                                            }
                                         }
                                     } else {
                                         // No pricelist: rebuild to manual input
@@ -764,23 +804,32 @@
                         // Recalc all price cells for a given vendor column from their vendor-card discount
                         function recalcDiscountForVendor(idx) {
                             const sparepart = isSparepartMode();
-                            const discInp = document.querySelector(`[name="vendors[${idx}][discount]"]`);
-                            const disc    = discInp ? (parseFloat(discInp.value) || 0) : 0;
+                            const typeInp = document.querySelector(`[name="vendors[${idx}][discount_type]"]:checked`);
+                            const discountType = typeInp ? typeInp.value : 'percent';
                             document.querySelectorAll('#priceMatrixBody tr[data-row]').forEach(function(row) {
                                 const rowIdx  = row.dataset.row;
                                 const hasPl = sparepart ? getRowPricelist(parseInt(rowIdx)) > 0 : rowHasPricelist(parseInt(rowIdx));
                                 if (!hasPl) return; // manual-entry rows with no pricelist: don't touch
                                 const pricelist = getRowPricelist(parseInt(rowIdx));
-                                const price   = Math.round(pricelist * (1 - disc / 100));
-                                // Update input value and hint with new discounted price
-                                const discounted = Math.round(pricelist * (1 - disc / 100));
                                 const inp = document.getElementById(`priceInput_${rowIdx}_${idx}`);
-                                if (inp && !inp.disabled) inp.value = discounted;
                                 const hintEl = document.getElementById(`discHint_${rowIdx}_${idx}`);
-                                if (hintEl) {
-                                    hintEl.textContent = sparepart
-                                        ? `Disk ${disc}% dari Rp ${pricelist.toLocaleString('id-ID')}`
-                                        : (disc > 0 ? `Disk ${disc}% dari Rp ${pricelist.toLocaleString('id-ID')}` : '');
+                                if (discountType === 'fixed') {
+                                    if (inp && !inp.disabled) inp.value = Math.round(pricelist);
+                                    if (hintEl) {
+                                        const fixInp = document.querySelector(`[name="vendors[${idx}][fix_discount]"]`);
+                                        const fix = fixInp ? (parseFloat(fixInp.value) || 0) : 0;
+                                        hintEl.textContent = fix > 0 ? `Fix Disc Rp ${fix.toLocaleString('id-ID')}` : '';
+                                    }
+                                } else {
+                                    const discInp = document.querySelector(`[name="vendors[${idx}][discount]"]`);
+                                    const disc = discInp ? (parseFloat(discInp.value) || 0) : 0;
+                                    const discounted = Math.round(pricelist * (1 - disc / 100));
+                                    if (inp && !inp.disabled) inp.value = discounted;
+                                    if (hintEl) {
+                                        hintEl.textContent = sparepart
+                                            ? `Disk ${disc}% dari Rp ${pricelist.toLocaleString('id-ID')}`
+                                            : (disc > 0 ? `Disk ${disc}% dari Rp ${pricelist.toLocaleString('id-ID')}` : '');
+                                    }
                                 }
                             });
                         }
@@ -908,17 +957,17 @@
                                 const v = parseFloat(inp ? inp.value : 0);
                                 return v > 0 ? v : 0;
                             };
-                            const getRowFixDiscount = rowIdx => {
-                                const inp = document.getElementById(`fixDiscountInput_${rowIdx}`);
-                                if (inp) {
-                                    const v = parseFloat(inp.value);
-                                    if (!isNaN(v)) return v;
-                                }
-                                return 0;
+                            const getDiscountType = idx => {
+                                const inp = document.querySelector(`[name="vendors[${idx}][discount_type]"]:checked`);
+                                return inp ? inp.value : 'percent';
+                            };
+                            const getVendorFixDiscount = idx => {
+                                const inp = document.querySelector(`[name="vendors[${idx}][fix_discount]"]`);
+                                return inp ? (parseFloat(inp.value) || 0) : 0;
                             };
                             const fmt = n => 'IDR\u00a0' + Math.round(n).toLocaleString('id-ID');
 
-                            // Effective total: percentage vendors use input as net; otherwise subtract fixed discount
+                            // Effective total: use percentage as net, otherwise subtract vendor fixed discount
                             const effective = {};
                             vendorIndices.forEach(idx => { effective[idx] = 0; });
 
@@ -938,12 +987,10 @@
                                         `[name="vendor_prices[${rowIdx}][prices][${idx}]"]`);
                                     const val = priceInput ? parseFloat(priceInput.value) : 0;
                                     if (val <= 0) return;
-                                    const vendorDisc = getDisc(idx);
-                                    const fixDiscount = getRowFixDiscount(rowIdx);
-                                    if (vendorDisc > 0) {
+                                    if (getDiscountType(idx) === 'percent' && getDisc(idx) > 0) {
                                         effective[idx] += val * qty;
                                     } else {
-                                        effective[idx] += Math.max(0, val * qty - fixDiscount);
+                                        effective[idx] += Math.max(0, val * qty - getVendorFixDiscount(idx));
                                     }
                                 });
                             });
@@ -1101,7 +1148,7 @@
                                     const idx = vendorCount - 1;
                                     const card = document.querySelectorAll('.vendor-card')[idx];
                                     const fields = ['name', 'alamat', 'phone', 'pic',
-                                        'term_of_payment', 'tax_info', 'discount', 'other_terms', 'indent_duration'
+                                        'term_of_payment', 'tax_info', 'discount', 'fix_discount', 'other_terms', 'indent_duration'
                                     ];
                                     fields.forEach(f => {
                                         const el = card.querySelector(`[name="vendors[${idx}][${f}]"]`);
@@ -1112,7 +1159,13 @@
                                             `[name="vendors[${idx}][availability]"][value="${v['availability']}"]`);
                                         if (rb) rb.checked = true;
                                     }
+                                    if (v['discount_type']) {
+                                        const rb = card.querySelector(
+                                            `[name="vendors[${idx}][discount_type]"][value="${v['discount_type']}"]`);
+                                        if (rb) rb.checked = true;
+                                    }
                                     toggleIndentDuration(idx);
+                                    toggleDiscountType(idx);
                                     // sync recommended dropdown
                                     const nameInp = card.querySelector('.vendor-name-input');
                                     if (nameInp) nameInp.dispatchEvent(new Event('input'));
