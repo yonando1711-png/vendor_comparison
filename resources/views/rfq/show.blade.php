@@ -265,6 +265,9 @@
                                                         $uom = is_array($line['product_uom'])
                                                             ? $line['product_uom'][1]
                                                             : '';
+                                                        $savedFix = ($prefillSource && !empty($prefillSource->vendor_prices[$lineIdx]['fix_discount']))
+                                                            ? $prefillSource->vendor_prices[$lineIdx]['fix_discount']
+                                                            : ($line['fix_discount'] ?? 0);
                                                     @endphp
                                                     <tr data-row="{{ $lineIdx }}" data-pricelist="{{ $line['price_unit'] }}" data-linename="{{ $line['name'] ?? '' }}">
                                                         <td class="text-center">{{ $lineIdx + 1 }}</td>
@@ -311,7 +314,7 @@
                                                                 class="form-control form-control-sm text-end fix-discount-input"
                                                                 id="fixDiscountInput_{{ $lineIdx }}"
                                                                 name="vendor_prices[{{ $lineIdx }}][fix_discount]"
-                                                                value="{{ $line['fix_discount'] > 0 ? $line['fix_discount'] : '' }}"
+                                                                value="{{ $savedFix > 0 ? $savedFix : '' }}"
                                                                 placeholder="0">
                                                         </td>
                                                         {{-- price input cells injected by JS --}}
