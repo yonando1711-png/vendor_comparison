@@ -181,6 +181,14 @@
                 }
             }
         }
+        if (!$showFixDiscount) {
+            foreach ($vpRows as $r) {
+                if (!empty($r['fix_discount'])) {
+                    $showFixDiscount = true;
+                    break;
+                }
+            }
+        }
         $fixedColCount = 5 + ($showPricelistCol ? 1 : 0) + ($showFixDiscount ? 1 : 0);
     @endphp
 
@@ -265,7 +273,7 @@
                     $rl = $rfqProductLines[$ri] ?? null;
                     $pCode = $rl ? $rl['product_code'] ?? '' : $row['product_code'] ?? '';
                     $pName = $rl ? $rl['name'] : $row['product_name'] ?? '';
-                    $rowFixDiscount = (float) ($rl['fix_discount'] ?? 0);
+                    $rowFixDiscount = (float) ($row['fix_discount'] ?? $rl['fix_discount'] ?? 0);
                     $rowQty = (float) ($row['qty'] ?? 1);
                     $rowPerUnitFix = $rowQty > 0 ? $rowFixDiscount / $rowQty : 0;
                 @endphp
@@ -286,7 +294,7 @@
                     @endif
                     @if ($showFixDiscount)
                         <td class="text-right">
-                            {{ !empty($rl['fix_discount']) ? number_format((float) $rl['fix_discount'], 0, ',', '.') : '-' }}
+                            {{ !empty($row['fix_discount'] ?? $rl['fix_discount']) ? number_format((float) ($row['fix_discount'] ?? $rl['fix_discount']), 0, ',', '.') : '-' }}
                         </td>
                     @endif
                     @foreach ($vendors as $vi => $v)
@@ -294,18 +302,21 @@
                             $price = $row['prices'][$vi] ?? null;
                             $isRec = ($v['name'] ?? '') === $comparison->selected_vendor;
                             $pricelist = (float) ($row['pricelist_original'] ?? 0);
-                            preg_match('/[\d.]+/', $v['discount'] ?? '', $dm);
-                            $dRate = isset($dm[0]) ? (float) $dm[0] / 100 : 0;
+                            $vendorDisc = (float) ($v['discount'] ?? 0);
+                            $dRate = $vendorDisc / 100;
                             // Backward-compat: old sparepart stored base price. If price ≈ pricelist, apply discount.
                             $isBasePrice = $pricelist > 0 && $price !== null && abs((float)$price - $pricelist) < 2;
-                            $grossPrice = $isBasePrice && $dRate > 0 ? (float)$price * (1 - $dRate) : (float)$price;
-                            $displayPrice = max(0, $grossPrice - $rowPerUnitFix);
+                            $grossPrice = $isBasePrice && $vendorDisc > 0 ? (float)$price * (1 - $dRate) : (float)$price;
+                            // Use percentage OR fixed discount, not both
+                            $displayPrice = !empty($v['discount'])
+                                ? $grossPrice
+                                : max(0, $grossPrice - $rowPerUnitFix);
                         @endphp
                         <td class="text-right {{ $isRec ? 'rec-cell' : '' }}" style="vertical-align:top;">
                             @if ($price === null || $price === '' || $price == 0)
                                 <span class="text-muted">Tidak Menjual Barang</span>
                             @else
-                                @if ($rowFixDiscount > 0 && $grossPrice > 0)
+                                @if (empty($v['discount']) && $rowFixDiscount > 0 && $grossPrice > 0)
                                     <div style="font-weight:bold;">{{ $currency }}{{ number_format($displayPrice, 0, ',', '.') }}</div>
                                     <div style="font-size:8px; color:#666;">
                                         {{ number_format($grossPrice, 0, ',', '.') }} − {{ number_format($rowPerUnitFix, 0, ',', '.') }}
@@ -320,7 +331,14 @@
             @endforeach
 
             {{-- Disc row: right after last product, before spacers --}}
-            @if (collect($vendors)->filter(fn($v) => !empty($v['discount']))->count() > 0)
+            @php
+                $totalFixDiscount = 0;
+                foreach ($vpRows as $ri => $r) {
+                    $rl = $rfqProductLines[$ri] ?? null;
+                    $totalFixDiscount += (float) ($r['fix_discount'] ?? $rl['fix_discount'] ?? 0);
+                }
+            @endphp
+            @if (collect($vendors)->filter(fn($v) => !empty($v['discount']))->count() > 0 || $totalFixDiscount > 0)
                 <tr>
                     <td></td>
                     <td></td>
@@ -333,7 +351,11 @@
                         @php $isRec = ($v['name'] ?? '') === $comparison->selected_vendor; @endphp
                         <td class="text-center {{ $isRec ? 'rec-cell' : '' }}"
                             style="font-size:9px; color:#c0392b; font-weight:bold;">
-                            {{ !empty($v['discount']) ? 'Disc ' . rtrim($v['discount'], '%') . '%' : '' }}
+                            @if (!empty($v['discount']))
+                                Disc {{ rtrim($v['discount'], '%') }}%
+                            @elseif ($totalFixDiscount > 0)
+                                Fix Disc {{ number_format($totalFixDiscount, 0, ',', '.') }}
+                            @endif
                         </td>
                     @endforeach
                 </tr>
@@ -375,18 +397,21 @@
                 @foreach ($vendors as $vi => $v)
                     @php
                         $vTotal = 0;
-                        preg_match('/[\d.]+/', $v['discount'] ?? '', $dm);
-                        $dRate = isset($dm[0]) ? (float) $dm[0] / 100 : 0;
+                        $vendorDisc = (float) ($v['discount'] ?? 0);
+                        $dRate = $vendorDisc / 100;
                         foreach ($vpRows as $ri => $row) {
                             $p = (float) ($row['prices'][$vi] ?? 0);
                             $qty = (float) ($row['qty'] ?? 1);
                             $pricelist = (float) ($row['pricelist_original'] ?? 0);
                             $rl2 = $rfqProductLines[$ri] ?? null;
-                            $rowFixDiscount2 = (float) ($rl2['fix_discount'] ?? 0);
+                            $rowFixDiscount2 = (float) ($row['fix_discount'] ?? $rl2['fix_discount'] ?? 0);
                             // Backward-compat: if stored price ≈ pricelist, it was base price
                             $isBasePrice = $pricelist > 0 && abs($p - $pricelist) < 2;
-                            $grossPrice = $isBasePrice && $dRate > 0 ? $p * (1 - $dRate) : $p;
-                            $vTotal += max(0, $grossPrice * $qty - $rowFixDiscount2);
+                            $grossPrice = $isBasePrice && $vendorDisc > 0 ? $p * (1 - $dRate) : $p;
+                            // Use percentage OR fixed discount, not both
+                            $vTotal += !empty($v['discount'])
+                                ? $grossPrice * $qty
+                                : max(0, $grossPrice * $qty - $rowFixDiscount2);
                         }
                         $isRec = ($v['name'] ?? '') === $comparison->selected_vendor;
                     @endphp
