@@ -267,7 +267,7 @@ class OdooService
             return [];
         }
 
-        $cacheKey = 'odoo_vendor_history_' . md5(implode(',', $productIds));
+        $cacheKey = 'odoo_vendor_history_v2_' . md5(implode(',', $productIds));
 
         return Cache::remember($cacheKey, 1800, function () use ($productIds) {
             return $this->fetchProductVendorHistory($productIds);
@@ -318,16 +318,17 @@ class OdooService
             $ordersMap[$o['id']] = $o;
         }
 
-        // Group by "product_id::normalized_description" → vendor_id.
+        // Group by "product_id::normalized_description".
         // Keying by description differentiates generic-code products (e.g. [GA], [ATK])
         // that share the same product_id but represent different physical items.
+        // We retain all confirmed purchases so we can accurately detect Latest, Best Price, and Highest Price.
         $history = [];
         foreach ($lines as $line) {
             $productId  = $line['product_id'][0];
             $orderId    = $line['order_id'][0];
             $order      = $ordersMap[$orderId] ?? null;
 
-            if (!$order) {
+            if (!$order || (float) $line['price_unit'] <= 0) {
                 continue;
             }
 
@@ -336,19 +337,19 @@ class OdooService
             $date       = $order['date_order'];
             $historyKey = $productId . '::' . \App\Models\VendorComparison::normalizeDescription($line['name'] ?? '');
 
-            // Since we ordered by id desc, the first encounter per vendor is the most recent
-            if (!isset($history[$historyKey][$vendorId])) {
-                $history[$historyKey][$vendorId] = [
-                    'vendor_id'   => $vendorId,
-                    'vendor_name' => $vendorName,
-                    'price_unit'  => $line['price_unit'],
-                    'product_qty' => $line['product_qty'],
-                    'uom'         => is_array($line['product_uom']) ? $line['product_uom'][1] : '',
-                    'po_name'     => $order['name'],
-                    'date'        => $date,
-                    'order_id'    => $orderId,
-                ];
-            }
+            $item = [
+                'vendor_id'   => $vendorId,
+                'vendor_name' => $vendorName,
+                'price_unit'  => (float) $line['price_unit'],
+                'product_qty' => $line['product_qty'],
+                'uom'         => is_array($line['product_uom']) ? $line['product_uom'][1] : '',
+                'po_name'     => $order['name'],
+                'date'        => $date,
+                'order_id'    => $orderId,
+            ];
+
+            $history[$historyKey][] = $item;
+            $history[$productId][]  = $item;
         }
 
         return $history;
