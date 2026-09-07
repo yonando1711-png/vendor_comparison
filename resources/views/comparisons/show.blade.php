@@ -570,6 +570,19 @@
                             </div>
                         </div>
 
+                        {{-- ── Legend ── --}}
+                        <div class="d-flex gap-3 mb-3 flex-wrap align-items-center">
+                            <span class="fw-semibold small">Legend:</span>
+                            <span class="badge price-best px-2 py-1">&#9733; Best Price</span>
+                            <span class="badge price-current px-2 py-1">&#9830; Current RFQ Vendor</span>
+                            <span class="badge price-worst px-2 py-1">&#9660; Highest Price</span>
+                            <span class="badge bg-primary px-2 py-1">&#128197; Latest Purchase</span>
+                            <span class="ms-auto text-muted small">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Shows most recent purchase + 3 cheapest historical vendors per product.
+                            </span>
+                        </div>
+
                         {{-- Per-product vendor comparison (condensed) --}}
                         @php $currency = is_array($rfq['currency_id']) ? $rfq['currency_id'][1] : 'IDR'; @endphp
                         @foreach ($rfq['lines'] as $line)
@@ -581,7 +594,8 @@
                                 $productName = $line['product_id'][1];
                                 $uom = is_array($line['product_uom']) ? $line['product_uom'][1] : '';
                                 $rfqVendorId = is_array($rfq['partner_id']) ? $rfq['partner_id'][0] : null;
-                                $vendorRows = $history[$productId] ?? [];
+                                $historyKey = $productId . '::' . \App\Models\VendorComparison::normalizeDescription($line['name'] ?? '');
+                                $vendorRows = $history[$historyKey] ?? $history[$productId] ?? [];
                                 $allPrices = array_column(array_values($vendorRows), 'price_unit');
                                 $allPrices[] = $line['price_unit'];
                                 $allPrices = array_filter($allPrices, fn($p) => $p > 0);
@@ -694,7 +708,15 @@
                                                         </td>
                                                         <td class="text-center">{{ $mostRecentRow['product_qty'] }}</td>
                                                         <td class="text-center">{{ $mostRecentRow['uom'] }}</td>
-                                                        <td class="text-muted small">{{ $mostRecentRow['po_name'] }}</td>
+                                                        <td>
+                                                            @if (!empty($mostRecentRow['order_id']))
+                                                                <a href="{{ route('rfq.show', $mostRecentRow['order_id']) }}" class="text-decoration-none small">
+                                                                    {{ $mostRecentRow['po_name'] }}
+                                                                </a>
+                                                            @else
+                                                                <span class="text-muted small">{{ $mostRecentRow['po_name'] }}</span>
+                                                            @endif
+                                                        </td>
                                                         <td class="fw-semibold">
                                                             {{ \Carbon\Carbon::parse($mostRecentRow['date'])->format('d M Y H:i') }}
                                                         </td>
@@ -730,7 +752,15 @@
                                                         </td>
                                                         <td class="text-center">{{ $row['product_qty'] }}</td>
                                                         <td class="text-center">{{ $row['uom'] }}</td>
-                                                        <td class="text-muted small">{{ $row['po_name'] }}</td>
+                                                        <td>
+                                                            @if (!empty($row['order_id']))
+                                                                <a href="{{ route('rfq.show', $row['order_id']) }}" class="text-decoration-none small">
+                                                                    {{ $row['po_name'] }}
+                                                                </a>
+                                                            @else
+                                                                <span class="text-muted small">{{ $row['po_name'] }}</span>
+                                                            @endif
+                                                        </td>
                                                         <td class="text-muted">
                                                             {{ \Carbon\Carbon::parse($row['date'])->format('d M Y H:i') }}
                                                         </td>
@@ -748,7 +778,7 @@
                                                     <tr>
                                                         <td colspan="7" class="text-center text-muted py-3 small">
                                                             <i class="bi bi-clock-history me-1"></i>No purchase history
-                                                            from other vendors.
+                                                            from other vendors for this product.
                                                         </td>
                                                     </tr>
                                                 @elseif ($totalHistoryCount > 4)
