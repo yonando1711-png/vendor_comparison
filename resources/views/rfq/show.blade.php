@@ -1567,17 +1567,18 @@
                     </div>
 
                     <div class="card-body p-0">
+                        {{-- TABLE 1: Current RFQ Quote --}}
                         <div class="table-responsive">
-                            <table class="table table-bordered align-middle mb-0">
+                            <table class="table table-bordered table-sm align-middle mb-0">
                                 <thead>
-                                    <tr>
-                                        <th class="ps-3">Vendor</th>
-                                        <th class="text-center">Unit Price</th>
-                                        <th class="text-center">Qty</th>
-                                        <th class="text-center">UoM</th>
-                                        <th>Last PO</th>
-                                        <th>Last Purchase Date</th>
-                                        <th class="text-center">Note</th>
+                                    <tr class="table-light text-muted small text-nowrap">
+                                        <th class="ps-3" style="width: 30%;">Current Vendor</th>
+                                        <th class="text-center" style="width: 16%;">Quoted Price</th>
+                                        <th class="text-center" style="width: 6%;">Qty</th>
+                                        <th class="text-center" style="width: 6%;">UoM</th>
+                                        <th style="width: 15%;">RFQ / PO</th>
+                                        <th style="width: 14%;">Date</th>
+                                        <th class="text-center" style="width: 13%;">Note</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1609,7 +1610,39 @@
                                             @endif
                                         </td>
                                     </tr>
+                                </tbody>
+                            </table>
+                        </div>
 
+                        {{-- Section Header / Separator for History --}}
+                        <div class="d-flex align-items-center justify-content-between px-3 py-2 border-top border-bottom" style="background-color: #f8fafc;">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi bi-clock-history text-primary fs-6"></i>
+                                <span class="fw-bold text-dark" style="font-size: 0.82rem; letter-spacing: 0.02em;">Purchase History</span>
+                                <span class="badge bg-secondary-subtle text-secondary border" style="font-size: 0.68rem; font-weight: 500;">Odoo</span>
+                            </div>
+                            @if ($totalHistoryCount > 0)
+                                <span class="badge bg-white text-secondary border font-monospace shadow-sm" style="font-size: 0.72rem; font-weight: 500;">
+                                    <i class="bi bi-receipt me-1"></i>{{ $totalHistoryCount }} past {{ \Illuminate\Support\Str::plural('purchase', $totalHistoryCount) }}
+                                </span>
+                            @endif
+                        </div>
+
+                        {{-- TABLE 2: Historical Benchmarks --}}
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm align-middle mb-0">
+                                <thead>
+                                    <tr class="table-light text-muted small text-nowrap">
+                                        <th class="ps-3" style="width: 30%;">Historical Vendor</th>
+                                        <th class="text-center" style="width: 16%;">Unit Price</th>
+                                        <th class="text-center" style="width: 6%;">Qty</th>
+                                        <th class="text-center" style="width: 6%;">UoM</th>
+                                        <th style="width: 15%;">Past PO</th>
+                                        <th style="width: 14%;">Purchase Date</th>
+                                        <th class="text-center" style="width: 13%;">Note</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
                                     {{-- Row 2: Latest Purchase row --}}
                                     @if ($mostRecentRow)
                                         <tr class="table-info" style="border-left: 3px solid #0d6efd;">
@@ -1702,14 +1735,7 @@
                                     @if (!$mostRecentRow)
                                         <tr>
                                             <td colspan="7" class="text-center text-muted py-3 small">
-                                                <i class="bi bi-clock-history me-1"></i>
-                                                No purchase history from other vendors for this product.
-                                            </td>
-                                        </tr>
-                                    @elseif ($totalHistoryCount > 1)
-                                        <tr>
-                                            <td colspan="7" class="text-center text-muted py-2 small fst-italic">
-                                                Showing key price references (Latest, Best Price, Highest Price) of {{ $totalHistoryCount }} purchases in history.
+                                                <i class="bi bi-clock-history me-1"></i>No past purchase history found in Odoo for this product.
                                             </td>
                                         </tr>
                                     @endif
