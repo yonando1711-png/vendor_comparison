@@ -666,8 +666,8 @@
                                     && $worstPriceRow['price_unit'] > ($mostRecentRow['price_unit'] ?? 0)
                                     && $worstPriceRow['price_unit'] > ($bestPriceRow['price_unit'] ?? 0);
                             @endphp
-                            <div class="card mb-3 shadow-sm border">
-                                <div class="card-header py-2 d-flex align-items-center gap-2 flex-wrap bg-light">
+                            <div class="card product-item-card mb-4 shadow-sm" style="border: 2px solid #94a3b8; border-radius: 8px; overflow: hidden;">
+                                <div class="card-header py-2 d-flex align-items-center gap-2 flex-wrap" style="background-color: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
                                     <i class="bi bi-box-seam text-secondary"></i>
                                     <span class="badge bg-secondary">{{ $productName }}</span>
                                     <span class="fw-semibold text-dark">{{ $line['name'] }}</span>
@@ -726,43 +726,40 @@
                                                         @endif
                                                     </td>
                                                 </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
 
-                                    {{-- Section Header / Separator for History --}}
-                                    <div class="d-flex align-items-center justify-content-between px-3 py-2 border-top border-bottom" style="background-color: #f8fafc;">
-                                        <div class="d-flex align-items-center gap-2">
-                                            <i class="bi bi-clock-history text-primary fs-6"></i>
-                                            <span class="fw-bold text-dark" style="font-size: 0.82rem; letter-spacing: 0.02em;">Purchase History</span>
-                                            <span class="badge bg-secondary-subtle text-secondary border" style="font-size: 0.68rem; font-weight: 500;">Odoo</span>
-                                        </div>
-                                        @if ($totalHistoryCount > 0)
-                                            <span class="badge bg-white text-secondary border font-monospace shadow-sm" style="font-size: 0.72rem; font-weight: 500;">
-                                                <i class="bi bi-receipt me-1"></i>{{ $totalHistoryCount }} past {{ Str::plural('purchase', $totalHistoryCount) }}
-                                            </span>
-                                        @endif
-                                    </div>
-
-                                    {{-- TABLE 2: Historical Benchmarks --}}
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered table-sm align-middle mb-0">
-                                            <thead>
-                                                <tr class="table-light text-muted small text-nowrap">
-                                                    <th class="ps-3" style="width: 30%;">Historical Vendor</th>
-                                                    <th class="text-center" style="width: 16%;">Unit Price</th>
-                                                    <th class="text-center" style="width: 6%;">Qty</th>
-                                                    <th class="text-center" style="width: 6%;">UoM</th>
-                                                    <th style="width: 15%;">Past PO</th>
-                                                    <th style="width: 14%;">Purchase Date</th>
-                                                    <th class="text-center" style="width: 13%;">Note</th>
+                                                {{-- Divider: Purchase History --}}
+                                                <tr class="border-top border-bottom" style="background-color: #f8fafc;">
+                                                    <td colspan="7" class="px-3 py-2">
+                                                        <div class="d-flex align-items-center justify-content-between">
+                                                            <div class="d-flex align-items-center gap-2">
+                                                                <i class="bi bi-clock-history text-primary fs-6"></i>
+                                                                <span class="fw-bold text-dark" style="font-size: 0.82rem; letter-spacing: 0.02em;">Purchase History</span>
+                                                                <span class="badge bg-secondary-subtle text-secondary border" style="font-size: 0.68rem; font-weight: 500;">Odoo</span>
+                                                            </div>
+                                                            @if ($totalHistoryCount > 0)
+                                                                <span class="badge bg-white text-secondary border font-monospace shadow-sm" style="font-size: 0.72rem; font-weight: 500;">
+                                                                    <i class="bi bi-receipt me-1"></i>{{ $totalHistoryCount }} past {{ Str::plural('purchase', $totalHistoryCount) }}
+                                                                </span>
+                                                            @endif
+                                                        </div>
+                                                    </td>
                                                 </tr>
-                                            </thead>
-                                            <tbody>
+
+                                                {{-- Historical Table Header Row --}}
+                                                <tr class="table-light text-muted small text-nowrap">
+                                                    <th class="ps-3">Historical Vendor</th>
+                                                    <th class="text-center">Unit Price</th>
+                                                    <th class="text-center">Qty</th>
+                                                    <th class="text-center">UoM</th>
+                                                    <th>Past PO</th>
+                                                    <th>Purchase Date</th>
+                                                    <th class="text-center">Note</th>
+                                                </tr>
+
                                                 {{-- Row 2: Latest Purchase --}}
                                                 @if ($mostRecentRow)
-                                                    <tr class="table-info" style="border-left: 3px solid #0d6efd;">
-                                                        <td class="ps-3 fw-semibold">{{ $mostRecentRow['vendor_name'] }}</td>
+                                                    <tr class="table-info">
+                                                        <td class="ps-3 fw-semibold" style="box-shadow: inset 4px 0 0 #0d6efd;">{{ $mostRecentRow['vendor_name'] }}</td>
                                                         <td class="text-center fw-semibold">
                                                             {{ $currency }}
                                                             {{ number_format($mostRecentRow['price_unit'], 2, ',', '.') }}

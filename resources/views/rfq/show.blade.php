@@ -29,21 +29,20 @@
         <div class="card mb-4">
             <div class="card-header py-3 d-flex align-items-center justify-content-between">
                 <h5><i class="bi bi-file-earmark-text me-2"></i>{{ $rfq['name'] }}</h5>
-                <span
-                    class="badge fs-6 {{ match ($rfq['state'] ?? '') {
-                        'sent' => 'badge-sent',
-                        'purchase' => 'bg-success',
-                        'done' => 'bg-secondary',
-                        'cancel' => 'bg-danger',
-                        default => 'badge-rfq',
-                    } }}">
+                <span class="badge fs-6 {{ match ($rfq['state'] ?? '') {
+                'sent' => 'badge-sent',
+                'purchase' => 'bg-success',
+                'done' => 'bg-secondary',
+                'cancel' => 'bg-danger',
+                default => 'badge-rfq',
+            } }}">
                     {{ match ($rfq['state'] ?? '') {
-                        'sent' => 'RFQ Sent',
-                        'purchase' => 'Purchase Order',
-                        'done' => 'Locked',
-                        'cancel' => 'Cancelled',
-                        default => 'RFQ',
-                    } }}
+                'sent' => 'RFQ Sent',
+                'purchase' => 'Purchase Order',
+                'done' => 'Locked',
+                'cancel' => 'Cancelled',
+                default => 'RFQ',
+            } }}
                 </span>
             </div>
             <div class="card-body">
@@ -120,7 +119,7 @@
                 @if ($existing && !$isEditMode)
                     <div
                         class="alert d-flex align-items-center gap-3 mb-4
-                    {{ $existing->isApproved() ? 'alert-success' : ($existing->isRejected() ? 'alert-danger' : ($existing->isCancelled() ? 'alert-warning' : 'alert-info')) }}">
+                                                            {{ $existing->isApproved() ? 'alert-success' : ($existing->isRejected() ? 'alert-danger' : ($existing->isCancelled() ? 'alert-warning' : 'alert-info')) }}">
                         <i
                             class="bi {{ $existing->isApproved() ? 'bi-patch-check-fill' : ($existing->isRejected() ? 'bi-x-circle-fill' : ($existing->isCancelled() ? 'bi-slash-circle-fill' : 'bi-hourglass-split')) }} fs-4"></i>
                         <div>
@@ -133,8 +132,7 @@
                                     Comparison already submitted.
                                 @endif
                             </strong>
-                            Status: <span
-                                class="badge {{ $existing->statusBadgeClass() }}">{{ $existing->statusLabel() }}</span>
+                            Status: <span class="badge {{ $existing->statusBadgeClass() }}">{{ $existing->statusLabel() }}</span>
                             @if ($existing->isRejected())
                                 <div class="mt-1 small fst-italic">"{{ $existing->rejection_reason }}"</div>
                             @endif
@@ -147,8 +145,8 @@
 
                 @if (Auth::user()->isCreator() && (!$existing || $isEditMode || $existing->isRejected() || $existing->isCancelled()))
                     {{-- ════════════════════════════════════════════════════════
-                     DATA CALON VENDOR — CLVP Input Form
-                ════════════════════════════════════════════════════════ --}}
+                    DATA CALON VENDOR — CLVP Input Form
+                    ════════════════════════════════════════════════════════ --}}
                     <div class="card mb-4 border-primary">
                         <div class="card-header py-2 d-flex align-items-center justify-content-between"
                             style="background:#eff6ff; border-color:#bfdbfe;">
@@ -192,12 +190,9 @@
                                     <div class="d-flex flex-wrap gap-3">
                                         @foreach (['unit_baru' => 'Unit Baru', 'aksesoris' => 'Aksesoris Mobil', 'sparepart' => 'Sparepart', 'umum' => 'Umum'] as $val => $lbl)
                                             <div class="form-check">
-                                                <input class="form-check-input" type="radio" name="category"
-                                                    id="cat_{{ $val }}" value="{{ $val }}"
-                                                    onchange="if(typeof onCategoryChange==='function') onCategoryChange()"
-                                                    {{ old('category', $prefillSource ? $prefillSource->category ?? 'umum' : 'umum') === $val ? 'checked' : '' }}>
-                                                <label class="form-check-label"
-                                                    for="cat_{{ $val }}">{{ $lbl }}</label>
+                                                <input class="form-check-input" type="radio" name="category" id="cat_{{ $val }}"
+                                                    value="{{ $val }}" onchange="if(typeof onCategoryChange==='function') onCategoryChange()" {{ old('category', $prefillSource ? $prefillSource->category ?? 'umum' : 'umum') === $val ? 'checked' : '' }}>
+                                                <label class="form-check-label" for="cat_{{ $val }}">{{ $lbl }}</label>
                                             </div>
                                         @endforeach
                                     </div>
@@ -243,7 +238,9 @@
                                                     <th>Nama Barang</th>
                                                     <th class="text-center" style="width:60px">Qty</th>
                                                     <th class="text-center" style="width:60px">UoM</th>
-                                                    <th class="text-center" style="width:120px">Pricelist Ori (Rp)<div class="fw-normal text-muted" style="font-size:.7rem">Opsional</div></th>
+                                                    <th class="text-center" style="width:120px">Pricelist Ori (Rp)<div
+                                                            class="fw-normal text-muted" style="font-size:.7rem">Opsional</div>
+                                                    </th>
                                                     {{-- vendor columns injected by JS --}}
                                                 </tr>
                                             </thead>
@@ -265,33 +262,26 @@
                                                             ? $line['product_uom'][1]
                                                             : '';
                                                     @endphp
-                                                    <tr data-row="{{ $lineIdx }}" data-pricelist="{{ $line['price_unit'] }}" data-linename="{{ $line['name'] ?? '' }}">
+                                                    <tr data-row="{{ $lineIdx }}" data-pricelist="{{ $line['price_unit'] }}"
+                                                        data-linename="{{ $line['name'] ?? '' }}">
                                                         <td class="text-center">{{ $lineIdx + 1 }}</td>
                                                         <td>
                                                             <div class="fw-semibold">{{ $pName }}</div>
                                                             @if (!empty($pDesc))
                                                                 <div class="text-muted small">{{ $pDesc }}</div>
                                                             @endif
-                                                            <input type="hidden"
-                                                                name="vendor_prices[{{ $lineIdx }}][product_id]"
+                                                            <input type="hidden" name="vendor_prices[{{ $lineIdx }}][product_id]"
                                                                 value="{{ $line['product_id'][0] }}">
-                                                            <input type="hidden"
-                                                                name="vendor_prices[{{ $lineIdx }}][product_name]"
+                                                            <input type="hidden" name="vendor_prices[{{ $lineIdx }}][product_name]"
                                                                 value="{{ $pName }}">
-                                                            <input type="hidden"
-                                                                name="vendor_prices[{{ $lineIdx }}][product_code]"
+                                                            <input type="hidden" name="vendor_prices[{{ $lineIdx }}][product_code]"
                                                                 value="{{ $pCode }}">
-                                                            <input type="hidden"
-                                                                name="vendor_prices[{{ $lineIdx }}][product_description]"
+                                                            <input type="hidden" name="vendor_prices[{{ $lineIdx }}][product_description]"
                                                                 value="{{ $pDesc }}">
-                                                            <input type="hidden"
-                                                                name="vendor_prices[{{ $lineIdx }}][qty]"
+                                                            <input type="hidden" name="vendor_prices[{{ $lineIdx }}][qty]"
                                                                 value="{{ $line['product_qty'] }}">
-                                                            <input type="hidden"
-                                                                name="vendor_prices[{{ $lineIdx }}][uom]"
-                                                                value="{{ $uom }}">
-                                                            <input type="hidden"
-                                                                name="vendor_prices[{{ $lineIdx }}][pricelist_original]"
+                                                            <input type="hidden" name="vendor_prices[{{ $lineIdx }}][uom]" value="{{ $uom }}">
+                                                            <input type="hidden" name="vendor_prices[{{ $lineIdx }}][pricelist_original]"
                                                                 id="pricelistOrigHidden_{{ $lineIdx }}"
                                                                 value="{{ $line['price_unit'] > 0 ? $line['price_unit'] : '' }}">
                                                         </td>
@@ -302,8 +292,7 @@
                                                                 class="form-control form-control-sm text-end pricelist-ori-input"
                                                                 id="pricelistOriInput_{{ $lineIdx }}"
                                                                 value="{{ $line['price_unit'] > 0 ? $line['price_unit'] : '' }}"
-                                                                placeholder="Opsional"
-                                                                oninput="onPricelistChange({{ $lineIdx }}, this.value)">
+                                                                placeholder="Opsional" oninput="onPricelistChange({{ $lineIdx }}, this.value)">
                                                         </td>
                                                         {{-- price input cells injected by JS --}}
                                                     </tr>
@@ -319,14 +308,14 @@
                                     <div class="col-md-5">
                                         <label class="form-label fw-semibold">Vendor yang Direkomendasikan <span
                                                 class="text-danger">*</span></label>
-                                        <select name="selected_vendor" id="selectedVendorDropdown" class="form-select"
-                                            required>
+                                        <select name="selected_vendor" id="selectedVendorDropdown" class="form-select" required>
                                             <option value="">— Pilih setelah menambah vendor —</option>
                                         </select>
                                     </div>
                                     <div class="col-md-7">
                                         <label class="form-label fw-semibold">Catatan / Justifikasi</label>
-                                        <textarea name="notes" class="form-control" rows="3" placeholder="Alasan pemilihan vendor...">{{ old('notes', $prefillSource ? $prefillSource->notes ?? '' : '') }}</textarea>
+                                        <textarea name="notes" class="form-control" rows="3"
+                                            placeholder="Alasan pemilihan vendor...">{{ old('notes', $prefillSource ? $prefillSource->notes ?? '' : '') }}</textarea>
                                     </div>
                                     <div class="col-12">
                                         <div id="vendorRecommendHint" style="display:none"></div>
@@ -344,7 +333,8 @@
                                 </div>
 
                                 {{-- Preview CLVP Modal --}}
-                                <div class="modal fade" id="clvpPreviewModal" tabindex="-1" aria-labelledby="clvpPreviewModalLabel" aria-hidden="true">
+                                <div class="modal fade" id="clvpPreviewModal" tabindex="-1" aria-labelledby="clvpPreviewModalLabel"
+                                    aria-hidden="true">
                                     <div class="modal-dialog modal-xl modal-dialog-scrollable">
                                         <div class="modal-content">
                                             <div class="modal-header">
@@ -357,7 +347,8 @@
                                                 <p class="text-muted text-center">Memuat preview...</p>
                                             </div>
                                             <div class="modal-footer">
-                                                <span class="text-muted small me-auto"><i class="bi bi-info-circle me-1"></i>Preview ini belum tersimpan. Submit form untuk menyimpan.</span>
+                                                <span class="text-muted small me-auto"><i class="bi bi-info-circle me-1"></i>Preview ini
+                                                    belum tersimpan. Submit form untuk menyimpan.</span>
                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
                                             </div>
                                         </div>
@@ -372,7 +363,7 @@
                                     $historyKeySet = array_fill_keys($historyKeys, true);
                                 @endphp
                                 <script>
-                                    (function() {
+                                    (function () {
                                         // Keys that HAVE confirmed purchase history, format: "productId::normalizedDesc"
                                         const historyKeySet = @json($historyKeySet);
 
@@ -382,7 +373,7 @@
                                         }
 
                                         // Trigger on vendor dropdown change
-                                        document.addEventListener('change', function(e) {
+                                        document.addEventListener('change', function (e) {
                                             if (e.target.id === 'selectedVendorDropdown') {
                                                 refreshRecommendation();
                                             }
@@ -445,124 +436,124 @@
                                 return `<option value="${v.id}">${escHtml(v.name)}${v.city ? ' - ' + escHtml(v.city) : ''}${localBadge}</option>`;
                             }).join('');
                             card.innerHTML = `
-                        <div class="card-header py-2 d-flex align-items-center gap-2"
-                            style="background:#f8fafc;">
-                            <i class="bi bi-shop text-primary"></i>
-                            <span class="fw-semibold small" id="cardTitle_${idx}">Vendor ${idx+1}</span>
-                            <div class="ms-auto">
-                                <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1"
-                                    onclick="removeVendorCard(${idx})" title="Hapus vendor ini">
-                                    <i class="bi bi-trash3"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="row g-2">
-                                <div class="col-12">
-                                    <label class="form-label small fw-semibold mb-1">Cari Supplier <span class="text-muted fw-normal">(opsional, untuk auto-isi)</span></label>
-                                    <select class="form-select form-select-sm odoo-autofill">
-                                        <option value="">— Pilih supplier —</option>
-                                        ${allOptions}
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small fw-semibold mb-1">Nama Calon Vendor <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control form-control-sm vendor-name-input"
-                                        name="vendors[${idx}][name]" required
-                                        placeholder="Nama vendor"
-                                        oninput="onVendorNameChange(${idx}, this.value)">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small fw-semibold mb-1">Alamat</label>
-                                    <input type="text" class="form-control form-control-sm"
-                                        name="vendors[${idx}][alamat]" placeholder="Alamat vendor">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label small fw-semibold mb-1">Telepon / Fax</label>
-                                    <input type="text" class="form-control form-control-sm"
-                                        name="vendors[${idx}][phone]" placeholder="No. telepon">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label small fw-semibold mb-1">PIC / Contact Person</label>
-                                    <input type="text" class="form-control form-control-sm"
-                                        name="vendors[${idx}][pic]" placeholder="Nama kontak">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label small fw-semibold mb-1">Term of Payment</label>
-                                    <input type="text" class="form-control form-control-sm"
-                                        name="vendors[${idx}][term_of_payment]"
-                                        placeholder="e.g., 30 hari">
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label small fw-semibold mb-1">Ketersediaan</label>
-                                    <div class="d-flex gap-3 mt-1">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input avail-radio" type="radio"
-                                                name="vendors[${idx}][availability]" value="ready" id="avail_ready_${idx}"
-                                                onchange="toggleIndentDuration(${idx})">
-                                            <label class="form-check-label small" for="avail_ready_${idx}">Ready</label>
-                                        </div>
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input avail-radio" type="radio"
-                                                name="vendors[${idx}][availability]" value="indent" id="avail_indent_${idx}"
-                                                onchange="toggleIndentDuration(${idx})">
-                                            <label class="form-check-label small" for="avail_indent_${idx}">Indent</label>
-                                        </div>
-                                    </div>
-                                    <div id="indent_dur_wrap_${idx}" style="display:none; margin-top:4px;">
-                                        <input type="text" class="form-control form-control-sm"
-                                            name="vendors[${idx}][indent_duration]"
-                                            placeholder="e.g., 2 minggu, 1 bulan">
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label small fw-semibold mb-1">Pajak</label>
-                                    <select class="form-select form-select-sm" name="vendors[${idx}][tax_info]">
-                                        <option value="">— Pilih —</option>
-                                        <option value="Exc PPN">Exc PPN</option>
-                                        <option value="Inc PPN">Inc PPN</option>
-                                        <option value="Tanpa PPN">Tanpa PPN</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small fw-semibold mb-1">Tipe Diskon</label>
-                                    <div class="d-flex gap-3 mb-2">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input discount-type-radio" type="radio"
-                                                name="vendors[${idx}][discount_type]" value="percent" id="dt_percent_${idx}"
-                                                checked onchange="toggleDiscountType(${idx})">
-                                            <label class="form-check-label small" for="dt_percent_${idx}">Diskon %</label>
-                                        </div>
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input discount-type-radio" type="radio"
-                                                name="vendors[${idx}][discount_type]" value="fixed" id="dt_fixed_${idx}"
-                                                onchange="toggleDiscountType(${idx})">
-                                            <label class="form-check-label small" for="dt_fixed_${idx}">Fix Diskon</label>
-                                        </div>
-                                    </div>
-                                    <div class="row g-2">
-                                        <div class="col-6">
-                                            <input type="number" class="form-control form-control-sm" id="disc_pct_${idx}"
-                                                name="vendors[${idx}][discount]"
-                                                placeholder="e.g., 10" min="0" max="100" step="0.01"
-                                                oninput="recalcDiscountForVendor(${idx})">
-                                        </div>
-                                        <div class="col-6">
-                                            <input type="number" class="form-control form-control-sm" id="disc_fix_${idx}"
-                                                name="vendors[${idx}][fix_discount]"
-                                                placeholder="e.g., 100000" min="0" step="1"
-                                                oninput="recalcDiscountForVendor(${idx})" readonly>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label small fw-semibold mb-1">Ketentuan Lain-lain dari Calon Supplier</label>
-                                    <textarea class="form-control form-control-sm" rows="2"
-                                        name="vendors[${idx}][other_terms]"
-                                        placeholder="Ketentuan lain dari calon supplier..."></textarea>
-                                </div>
-                            </div>
-                        </div>`;
+                                                                <div class="card-header py-2 d-flex align-items-center gap-2"
+                                                                    style="background:#f8fafc;">
+                                                                    <i class="bi bi-shop text-primary"></i>
+                                                                    <span class="fw-semibold small" id="cardTitle_${idx}">Vendor ${idx + 1}</span>
+                                                                    <div class="ms-auto">
+                                                                        <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1"
+                                                                            onclick="removeVendorCard(${idx})" title="Hapus vendor ini">
+                                                                            <i class="bi bi-trash3"></i>
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="card-body">
+                                                                    <div class="row g-2">
+                                                                        <div class="col-12">
+                                                                            <label class="form-label small fw-semibold mb-1">Cari Supplier <span class="text-muted fw-normal">(opsional, untuk auto-isi)</span></label>
+                                                                            <select class="form-select form-select-sm odoo-autofill">
+                                                                                <option value="">— Pilih supplier —</option>
+                                                                                ${allOptions}
+                                                                            </select>
+                                                                        </div>
+                                                                        <div class="col-md-6">
+                                                                            <label class="form-label small fw-semibold mb-1">Nama Calon Vendor <span class="text-danger">*</span></label>
+                                                                            <input type="text" class="form-control form-control-sm vendor-name-input"
+                                                                                name="vendors[${idx}][name]" required
+                                                                                placeholder="Nama vendor"
+                                                                                oninput="onVendorNameChange(${idx}, this.value)">
+                                                                        </div>
+                                                                        <div class="col-md-6">
+                                                                            <label class="form-label small fw-semibold mb-1">Alamat</label>
+                                                                            <input type="text" class="form-control form-control-sm"
+                                                                                name="vendors[${idx}][alamat]" placeholder="Alamat vendor">
+                                                                        </div>
+                                                                        <div class="col-md-4">
+                                                                            <label class="form-label small fw-semibold mb-1">Telepon / Fax</label>
+                                                                            <input type="text" class="form-control form-control-sm"
+                                                                                name="vendors[${idx}][phone]" placeholder="No. telepon">
+                                                                        </div>
+                                                                        <div class="col-md-4">
+                                                                            <label class="form-label small fw-semibold mb-1">PIC / Contact Person</label>
+                                                                            <input type="text" class="form-control form-control-sm"
+                                                                                name="vendors[${idx}][pic]" placeholder="Nama kontak">
+                                                                        </div>
+                                                                        <div class="col-md-4">
+                                                                            <label class="form-label small fw-semibold mb-1">Term of Payment</label>
+                                                                            <input type="text" class="form-control form-control-sm"
+                                                                                name="vendors[${idx}][term_of_payment]"
+                                                                                placeholder="e.g., 30 hari">
+                                                                        </div>
+                                                                        <div class="col-md-3">
+                                                                            <label class="form-label small fw-semibold mb-1">Ketersediaan</label>
+                                                                            <div class="d-flex gap-3 mt-1">
+                                                                                <div class="form-check form-check-inline">
+                                                                                    <input class="form-check-input avail-radio" type="radio"
+                                                                                        name="vendors[${idx}][availability]" value="ready" id="avail_ready_${idx}"
+                                                                                        onchange="toggleIndentDuration(${idx})">
+                                                                                    <label class="form-check-label small" for="avail_ready_${idx}">Ready</label>
+                                                                                </div>
+                                                                                <div class="form-check form-check-inline">
+                                                                                    <input class="form-check-input avail-radio" type="radio"
+                                                                                        name="vendors[${idx}][availability]" value="indent" id="avail_indent_${idx}"
+                                                                                        onchange="toggleIndentDuration(${idx})">
+                                                                                    <label class="form-check-label small" for="avail_indent_${idx}">Indent</label>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div id="indent_dur_wrap_${idx}" style="display:none; margin-top:4px;">
+                                                                                <input type="text" class="form-control form-control-sm"
+                                                                                    name="vendors[${idx}][indent_duration]"
+                                                                                    placeholder="e.g., 2 minggu, 1 bulan">
+                                                                            </div>
+                                                                        </div>
+                                                                        <div class="col-md-3">
+                                                                            <label class="form-label small fw-semibold mb-1">Pajak</label>
+                                                                            <select class="form-select form-select-sm" name="vendors[${idx}][tax_info]">
+                                                                                <option value="">— Pilih —</option>
+                                                                                <option value="Exc PPN">Exc PPN</option>
+                                                                                <option value="Inc PPN">Inc PPN</option>
+                                                                                <option value="Tanpa PPN">Tanpa PPN</option>
+                                                                            </select>
+                                                                        </div>
+                                                                        <div class="col-md-6">
+                                                                            <label class="form-label small fw-semibold mb-1">Tipe Diskon</label>
+                                                                            <div class="d-flex gap-3 mb-2">
+                                                                                <div class="form-check form-check-inline">
+                                                                                    <input class="form-check-input discount-type-radio" type="radio"
+                                                                                        name="vendors[${idx}][discount_type]" value="percent" id="dt_percent_${idx}"
+                                                                                        checked onchange="toggleDiscountType(${idx})">
+                                                                                    <label class="form-check-label small" for="dt_percent_${idx}">Diskon %</label>
+                                                                                </div>
+                                                                                <div class="form-check form-check-inline">
+                                                                                    <input class="form-check-input discount-type-radio" type="radio"
+                                                                                        name="vendors[${idx}][discount_type]" value="fixed" id="dt_fixed_${idx}"
+                                                                                        onchange="toggleDiscountType(${idx})">
+                                                                                    <label class="form-check-label small" for="dt_fixed_${idx}">Fix Diskon</label>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="row g-2">
+                                                                                <div class="col-6">
+                                                                                    <input type="number" class="form-control form-control-sm" id="disc_pct_${idx}"
+                                                                                        name="vendors[${idx}][discount]"
+                                                                                        placeholder="e.g., 10" min="0" max="100" step="0.01"
+                                                                                        oninput="recalcDiscountForVendor(${idx})">
+                                                                                </div>
+                                                                                <div class="col-6">
+                                                                                    <input type="number" class="form-control form-control-sm" id="disc_fix_${idx}"
+                                                                                        name="vendors[${idx}][fix_discount]"
+                                                                                        placeholder="e.g., 100000" min="0" step="1"
+                                                                                        oninput="recalcDiscountForVendor(${idx})" readonly>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div class="col-12">
+                                                                            <label class="form-label small fw-semibold mb-1">Ketentuan Lain-lain dari Calon Supplier</label>
+                                                                            <textarea class="form-control form-control-sm" rows="2"
+                                                                                name="vendors[${idx}][other_terms]"
+                                                                                placeholder="Ketentuan lain dari calon supplier..."></textarea>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>`;
 
                             container.appendChild(card);
                             // Init Tom Select on the Odoo supplier dropdown
@@ -639,7 +630,7 @@
 
                         function onVendorNameChange(idx, name) {
                             const titleEl = document.getElementById(`cardTitle_${idx}`);
-                            if (titleEl) titleEl.textContent = name || `Vendor ${idx+1}`;
+                            if (titleEl) titleEl.textContent = name || `Vendor ${idx + 1}`;
 
                             // Duplicate check — highlight input if name already used
                             const nameInput = document.querySelector(`[name="vendors[${idx}][name]"]`);
@@ -668,7 +659,7 @@
                             const th = document.getElementById(`priceColHeader_${idx}`);
                             if (th) {
                                 const nameSpan = th.querySelector('.vendor-col-name');
-                                if (nameSpan) nameSpan.textContent = name || `Vendor ${idx+1}`;
+                                if (nameSpan) nameSpan.textContent = name || `Vendor ${idx + 1}`;
                             }
 
                             // Update recommended dropdown
@@ -706,14 +697,14 @@
                             const hasPl = sparepart ? pricelist > 0 : rowHasPricelist(rowIdx);
                             if (hasPl) {
                                 const discInp = document.querySelector(`[name="vendors[${idx}][discount]"]`);
-                                const disc    = discInp ? (parseFloat(discInp.value) || 0) : 0;
+                                const disc = discInp ? (parseFloat(discInp.value) || 0) : 0;
                                 const typeInp = document.querySelector(`[name="vendors[${idx}][discount_type]"]:checked`);
                                 const discountType = typeInp ? typeInp.value : 'percent';
                                 let value, hintText;
                                 if (discountType === 'fixed') {
                                     value = pricelist;
                                     const fixInp = document.querySelector(`[name="vendors[${idx}][fix_discount]"]`);
-                                    const fix    = fixInp ? (parseFloat(fixInp.value) || 0) : 0;
+                                    const fix = fixInp ? (parseFloat(fixInp.value) || 0) : 0;
                                     hintText = fix > 0 ? `Fix Disc Rp ${fix.toLocaleString('id-ID')}` : '';
                                 } else {
                                     value = Math.round(pricelist * (1 - disc / 100));
@@ -723,36 +714,36 @@
                                 }
                                 const hint = `<div class="text-end text-muted" id="discHint_${rowIdx}_${idx}" style="font-size:.7rem;">${hintText}</div>`;
                                 return `
-                            ${hint}
-                            <div class="input-group input-group-sm">
-                                <input type="number" min="0" step="1"
-                                    class="form-control form-control-sm text-end price-input"
-                                    name="vendor_prices[${rowIdx}][prices][${idx}]"
-                                    id="priceInput_${rowIdx}_${idx}"
-                                    value="${value}"
-                                    placeholder="0">
-                            </div>
-                            <div class="form-check mt-1" style="display:none;">
-                                <input class="form-check-input tidak-jual-cb" type="checkbox"
-                                    id="tj_${rowIdx}_${idx}"
-                                    onchange="toggleTidakJual(${rowIdx},${idx},this)">
-                                <label class="form-check-label small text-muted" for="tj_${rowIdx}_${idx}">Tidak Menjual Barang</label>
-                            </div>`;
+                                                                    ${hint}
+                                                                    <div class="input-group input-group-sm">
+                                                                        <input type="number" min="0" step="1"
+                                                                            class="form-control form-control-sm text-end price-input"
+                                                                            name="vendor_prices[${rowIdx}][prices][${idx}]"
+                                                                            id="priceInput_${rowIdx}_${idx}"
+                                                                            value="${value}"
+                                                                            placeholder="0">
+                                                                    </div>
+                                                                    <div class="form-check mt-1" style="display:none;">
+                                                                        <input class="form-check-input tidak-jual-cb" type="checkbox"
+                                                                            id="tj_${rowIdx}_${idx}"
+                                                                            onchange="toggleTidakJual(${rowIdx},${idx},this)">
+                                                                        <label class="form-check-label small text-muted" for="tj_${rowIdx}_${idx}">Tidak Menjual Barang</label>
+                                                                    </div>`;
                             } else {
                                 return `
-                            <div class="input-group input-group-sm">
-                                <input type="number" min="0" step="1"
-                                    class="form-control form-control-sm text-end price-input"
-                                    name="vendor_prices[${rowIdx}][prices][${idx}]"
-                                    id="priceInput_${rowIdx}_${idx}"
-                                    placeholder="0">
-                            </div>
-                            <div class="form-check mt-1" style="display:none;">
-                                <input class="form-check-input tidak-jual-cb" type="checkbox"
-                                    id="tj_${rowIdx}_${idx}"
-                                    onchange="toggleTidakJual(${rowIdx},${idx},this)">
-                                <label class="form-check-label small text-muted" for="tj_${rowIdx}_${idx}">Tidak Menjual Barang</label>
-                            </div>`;
+                                                                    <div class="input-group input-group-sm">
+                                                                        <input type="number" min="0" step="1"
+                                                                            class="form-control form-control-sm text-end price-input"
+                                                                            name="vendor_prices[${rowIdx}][prices][${idx}]"
+                                                                            id="priceInput_${rowIdx}_${idx}"
+                                                                            placeholder="0">
+                                                                    </div>
+                                                                    <div class="form-check mt-1" style="display:none;">
+                                                                        <input class="form-check-input tidak-jual-cb" type="checkbox"
+                                                                            id="tj_${rowIdx}_${idx}"
+                                                                            onchange="toggleTidakJual(${rowIdx},${idx},this)">
+                                                                        <label class="form-check-label small text-muted" for="tj_${rowIdx}_${idx}">Tidak Menjual Barang</label>
+                                                                    </div>`;
                             }
                         }
 
@@ -764,7 +755,7 @@
                             const sparepart = isSparepartMode();
                             const pricelist = getRowPricelist(rowIdx);
                             // Update existing input values to new discounted prices for hasPl rows
-                            document.querySelectorAll('#priceMatrixHeader th[id^="priceColHeader_"]').forEach(function(th) {
+                            document.querySelectorAll('#priceMatrixHeader th[id^="priceColHeader_"]').forEach(function (th) {
                                 const idx = parseInt(th.id.replace('priceColHeader_', ''));
                                 const td = document.getElementById(`priceCell_${rowIdx}_${idx}`);
                                 if (td) {
@@ -806,8 +797,8 @@
                             const sparepart = isSparepartMode();
                             const typeInp = document.querySelector(`[name="vendors[${idx}][discount_type]"]:checked`);
                             const discountType = typeInp ? typeInp.value : 'percent';
-                            document.querySelectorAll('#priceMatrixBody tr[data-row]').forEach(function(row) {
-                                const rowIdx  = row.dataset.row;
+                            document.querySelectorAll('#priceMatrixBody tr[data-row]').forEach(function (row) {
+                                const rowIdx = row.dataset.row;
                                 const hasPl = sparepart ? getRowPricelist(parseInt(rowIdx)) > 0 : rowHasPricelist(parseInt(rowIdx));
                                 if (!hasPl) return; // manual-entry rows with no pricelist: don't touch
                                 const pricelist = getRowPricelist(parseInt(rowIdx));
@@ -845,8 +836,8 @@
                             th.id = `priceColHeader_${idx}`;
                             th.className = 'text-center';
                             th.style.minWidth = '130px';
-                            th.innerHTML = `<span class="vendor-col-name small">Vendor ${idx+1}</span>
-                        <div class="small text-muted fst-italic" style="font-size:.7rem">${sparepart ? 'Diskon → Harga' : 'Harga'}</div>`;
+                            th.innerHTML = `<span class="vendor-col-name small">Vendor ${idx + 1}</span>
+                                                                <div class="small text-muted fst-italic" style="font-size:.7rem">${sparepart ? 'Diskon → Harga' : 'Harga'}</div>`;
                             header.appendChild(th);
 
                             // Add input cell per product row
@@ -866,14 +857,14 @@
                         function onCategoryChange() {
                             const sparepart = isSparepartMode();
                             // Rebuild every existing price cell
-                            document.querySelectorAll('#priceMatrixHeader th[id^="priceColHeader_"]').forEach(function(th) {
+                            document.querySelectorAll('#priceMatrixHeader th[id^="priceColHeader_"]').forEach(function (th) {
                                 const idx = parseInt(th.id.replace('priceColHeader_', ''));
                                 // Update header subtitle
                                 const sub = th.querySelector('.small.text-muted');
                                 // Header hint: sparepart always auto-calc; otherwise per-row
                                 if (sub) sub.textContent = sparepart ? 'Diskon → Harga' : 'Harga';
                                 // Rebuild each row's cell
-                                document.querySelectorAll('#priceMatrixBody tr[data-row]').forEach(function(row) {
+                                document.querySelectorAll('#priceMatrixBody tr[data-row]').forEach(function (row) {
                                     const rowIdx = row.dataset.row;
                                     const td = document.getElementById(`priceCell_${rowIdx}_${idx}`);
                                     if (td) {
@@ -1013,8 +1004,8 @@
                             };
 
                             let html = `<div class="alert alert-success py-2 px-3 mb-0 d-flex align-items-start gap-2">
-                                <i class="bi bi-lightbulb-fill text-warning fs-5 mt-1 flex-shrink-0"></i>
-                                <div><strong>Rekomendasi: ${fmtVendor(bestIdx)}</strong>`;
+                                                                        <i class="bi bi-lightbulb-fill text-warning fs-5 mt-1 flex-shrink-0"></i>
+                                                                        <div><strong>Rekomendasi: ${fmtVendor(bestIdx)}</strong>`;
 
                             if (sorted.length > 1) {
                                 const others = sorted.slice(1).map(idx => {
@@ -1073,7 +1064,7 @@
                                 e.target.name && e.target.name.includes('[discount]')) refreshRecommendation();
                         });
 
-                        document.getElementById('clvpForm').addEventListener('submit', function(e) {
+                        document.getElementById('clvpForm').addEventListener('submit', function (e) {
                             const cards = document.querySelectorAll('.vendor-card');
                             if (cards.length < 3 || cards.length > 10) {
                                 e.preventDefault();
@@ -1093,7 +1084,7 @@
                             // Clear draft on successful submit
                             try {
                                 localStorage.removeItem(DRAFT_KEY);
-                            } catch (e) {}
+                            } catch (e) { }
                         });
 
                         // ── localStorage draft save / restore ──────────────────────
@@ -1137,7 +1128,7 @@
                                 });
                                 data.prices = prices;
                                 localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
-                            } catch (e) {}
+                            } catch (e) { }
                         }
 
                         function loadDraft() {
@@ -1286,7 +1277,7 @@
 
                             // Gather vendors from cards
                             const vendors = [];
-                            document.querySelectorAll('.vendor-card').forEach(function(card) {
+                            document.querySelectorAll('.vendor-card').forEach(function (card) {
                                 const get = f => { const el = card.querySelector(`[name*="[${f}]"]`); return el ? el.value.trim() : ''; };
                                 const getRb = f => { const el = card.querySelector(`[name*="[${f}]"]:checked`); return el ? el.value : ''; };
                                 const name = get('name');
@@ -1308,16 +1299,16 @@
 
                             // Gather rows
                             const rows = [];
-                            document.querySelectorAll('#priceMatrixBody tr[data-row]').forEach(function(tr) {
+                            document.querySelectorAll('#priceMatrixBody tr[data-row]').forEach(function (tr) {
                                 const ri = tr.dataset.row;
                                 const nameEl = tr.querySelector('td:nth-child(2)');
                                 const qtyInp = tr.querySelector(`[name="vendor_prices[${ri}][qty]"]`);
                                 const uomInp = tr.querySelector(`[name="vendor_prices[${ri}][uom]"]`);
-                                const plHid  = tr.querySelector(`[name="vendor_prices[${ri}][pricelist_original]"]`);
+                                const plHid = tr.querySelector(`[name="vendor_prices[${ri}][pricelist_original]"]`);
                                 const codeInp = tr.querySelector(`[name="vendor_prices[${ri}][product_code]"]`);
                                 const descInp = tr.querySelector(`[name="vendor_prices[${ri}][product_description]"]`);
                                 const prices = [];
-                                document.querySelectorAll(`#priceMatrixHeader th[id^="priceColHeader_"]`).forEach(function(th) {
+                                document.querySelectorAll(`#priceMatrixHeader th[id^="priceColHeader_"]`).forEach(function (th) {
                                     const idx = parseInt(th.id.replace('priceColHeader_', ''));
                                     const pinp = tr.querySelector(`[name="vendor_prices[${ri}][prices][${idx}]"]`);
                                     prices.push(pinp ? parseFloat(pinp.value) || 0 : 0);
@@ -1339,61 +1330,61 @@
 
                             const cur = 'Rp';
                             const fmt = n => cur + Math.round(n).toLocaleString('id-ID');
-                            const getDisc = v => { const m = String(v.discount||'').match(/[\d.]+/); return m ? parseFloat(m[0]) / 100 : 0; };
+                            const getDisc = v => { const m = String(v.discount || '').match(/[\d.]+/); return m ? parseFloat(m[0]) / 100 : 0; };
 
                             // Category checkboxes header
-                            const cats = ['unit_baru','aksesoris','sparepart','umum'];
+                            const cats = ['unit_baru', 'aksesoris', 'sparepart', 'umum'];
                             const catLabels = { unit_baru: 'Unit Baru', aksesoris: 'Aksesoris Mobil', sparepart: 'Sparepart', umum: 'Umum' };
-                            let catHtml = cats.map(c => `<span style="margin-right:14px;"><span style="display:inline-block;width:12px;height:12px;border:1.5px solid #333;vertical-align:middle;margin-right:3px;background:${c===catRaw?'#333':'#fff'};">${c===catRaw?'<span style="color:#fff;font-size:9px;line-height:12px;display:block;text-align:center;">&#10003;</span>':''}</span>${catLabels[c]}</span>`).join('');
+                            let catHtml = cats.map(c => `<span style="margin-right:14px;"><span style="display:inline-block;width:12px;height:12px;border:1.5px solid #333;vertical-align:middle;margin-right:3px;background:${c === catRaw ? '#333' : '#fff'};">${c === catRaw ? '<span style="color:#fff;font-size:9px;line-height:12px;display:block;text-align:center;">&#10003;</span>' : ''}</span>${catLabels[c]}</span>`).join('');
 
                             // Always show pricelist col in preview
                             const showPl = true;
 
                             // Table header
                             let html = `
-                            <div style="font-family:Arial,sans-serif; font-size:11px;">
-                            <div style="text-align:center; font-weight:bold; font-size:14px; margin-bottom:6px;">COMPARISON LOCAL VENDOR PRICE ( CLVP )</div>
-                            <div style="margin-bottom:8px;">${catHtml}</div>
-                            <div style="overflow-x:auto;">
-                            <table style="width:100%; border-collapse:collapse; font-size:11px;">
-                            <thead>
-                            <tr>
-                                <th rowspan="2" style="border:1px solid #000;padding:4px 6px;text-align:center;width:24px;">No</th>
-                                <th rowspan="2" style="border:1px solid #000;padding:4px 6px;">Nama Barang</th>
-                                <th rowspan="2" style="border:1px solid #000;padding:4px 6px;text-align:center;width:60px;">Kode Barang</th>
-                                <th rowspan="2" style="border:1px solid #000;padding:4px 6px;text-align:center;width:36px;">Qty</th>
-                                <th rowspan="2" style="border:1px solid #000;padding:4px 6px;text-align:center;width:36px;">UoM</th>
-                                <th rowspan="2" style="border:1px solid #000;padding:4px 6px;text-align:center;width:90px;">Pricelist Original</th>
-                                <th colspan="${vendors.length}" style="border:1px solid #000;padding:4px 6px;text-align:center;background:#f0f0f0;">MITRA BISNIS</th>
-                            </tr>
-                            <tr>
-                                ${vendors.map(v => {
-                                    const isRec = v.name === selVendor;
-                                    return `<th style="border:1px solid #000;padding:4px 6px;text-align:center;min-width:100px;${isRec?'background:#d4edda;':''}">
-                                        <div style="font-weight:bold;">${v.name}</div>
-                                        ${v.pic ? `<div style="font-size:10px;">PIC : ${v.pic}</div>` : ''}
-                                        ${v.phone ? `<div style="font-size:10px;">TELP : ${v.phone}</div>` : ''}
-                                        ${isRec ? '<div style="font-size:9px;color:#155724;font-weight:bold;">&#10003; Rekomendasi</div>' : ''}
-                                    </th>`;
-                                }).join('')}
-                            </tr>
-                            </thead>
-                            <tbody>`;
+                                                                    <div style="font-family:Arial,sans-serif; font-size:11px;">
+                                                                    <div style="text-align:center; font-weight:bold; font-size:14px; margin-bottom:6px;">COMPARISON LOCAL VENDOR PRICE ( CLVP )</div>
+                                                                    <div style="margin-bottom:8px;">${catHtml}</div>
+                                                                    <div style="overflow-x:auto;">
+                                                                    <table style="width:100%; border-collapse:collapse; font-size:11px;">
+                                                                    <thead>
+                                                                    <tr>
+                                                                        <th rowspan="2" style="border:1px solid #000;padding:4px 6px;text-align:center;width:24px;">No</th>
+                                                                        <th rowspan="2" style="border:1px solid #000;padding:4px 6px;">Nama Barang</th>
+                                                                        <th rowspan="2" style="border:1px solid #000;padding:4px 6px;text-align:center;width:60px;">Kode Barang</th>
+                                                                        <th rowspan="2" style="border:1px solid #000;padding:4px 6px;text-align:center;width:36px;">Qty</th>
+                                                                        <th rowspan="2" style="border:1px solid #000;padding:4px 6px;text-align:center;width:36px;">UoM</th>
+                                                                        <th rowspan="2" style="border:1px solid #000;padding:4px 6px;text-align:center;width:90px;">Pricelist Original</th>
+                                                                        <th colspan="${vendors.length}" style="border:1px solid #000;padding:4px 6px;text-align:center;background:#f0f0f0;">MITRA BISNIS</th>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        ${vendors.map(v => {
+                                const isRec = v.name === selVendor;
+                                return `<th style="border:1px solid #000;padding:4px 6px;text-align:center;min-width:100px;${isRec ? 'background:#d4edda;' : ''}">
+                                                                                <div style="font-weight:bold;">${v.name}</div>
+                                                                                ${v.pic ? `<div style="font-size:10px;">PIC : ${v.pic}</div>` : ''}
+                                                                                ${v.phone ? `<div style="font-size:10px;">TELP : ${v.phone}</div>` : ''}
+                                                                                ${isRec ? '<div style="font-size:9px;color:#155724;font-weight:bold;">&#10003; Rekomendasi</div>' : ''}
+                                                                            </th>`;
+                            }).join('')}
+                                                                    </tr>
+                                                                    </thead>
+                                                                    <tbody>`;
 
                             // Product rows
-                            rows.forEach(function(row, ri) {
+                            rows.forEach(function (row, ri) {
                                 html += '<tr>';
-                                html += `<td style="border:1px solid #000;padding:4px 6px;text-align:center;">${ri+1}</td>`;
+                                html += `<td style="border:1px solid #000;padding:4px 6px;text-align:center;">${ri + 1}</td>`;
                                 html += `<td style="border:1px solid #000;padding:4px 6px;">${row.code ? `<span style="background:#6c757d;color:#fff;padding:1px 4px;border-radius:3px;font-size:8px;margin-right:3px;">${row.code}</span>` : ''}${row.name}</td>`;
                                 html += `<td style="border:1px solid #000;padding:4px 6px;text-align:center;color:#888;font-size:10px;">${row.code}</td>`;
                                 html += `<td style="border:1px solid #000;padding:4px 6px;text-align:center;">${row.qty}</td>`;
                                 html += `<td style="border:1px solid #000;padding:4px 6px;text-align:center;">${row.uom}</td>`;
                                 html += `<td style="border:1px solid #000;padding:4px 6px;text-align:right;">${row.pricelist > 0 ? fmt(row.pricelist) : ''}</td>`;
-                                vendors.forEach(function(v, vi) {
+                                vendors.forEach(function (v, vi) {
                                     const isRec = v.name === selVendor;
                                     const p = row.prices[vi] || 0;
                                     const display = p > 0 ? fmt(p) : '<span style="color:#888;font-style:italic;">Tidak Menjual Barang</span>';
-                                    html += `<td style="border:1px solid #000;padding:4px 6px;text-align:right;${isRec?'background:#f0fff4;':''}">${display}</td>`;
+                                    html += `<td style="border:1px solid #000;padding:4px 6px;text-align:right;${isRec ? 'background:#f0fff4;' : ''}">${display}</td>`;
                                 });
                                 html += '</tr>';
                             });
@@ -1410,10 +1401,10 @@
                             if (hasDisc) {
                                 const fixedCols = showPl ? 6 : 5;
                                 html += '<tr>' + Array(fixedCols).fill('<td style="border:1px solid #000;"></td>').join('');
-                                vendors.forEach(function(v) {
+                                vendors.forEach(function (v) {
                                     const isRec = v.name === selVendor;
                                     const d = parseFloat(v.discount) || 0;
-                                    html += `<td style="border:1px solid #000;padding:4px 6px;text-align:center;font-size:10px;font-weight:bold;color:#c0392b;${isRec?'background:#f0fff4;':''}">${d > 0 ? 'Disc ' + d + '%' : ''}</td>`;
+                                    html += `<td style="border:1px solid #000;padding:4px 6px;text-align:center;font-size:10px;font-weight:bold;color:#c0392b;${isRec ? 'background:#f0fff4;' : ''}">${d > 0 ? 'Disc ' + d + '%' : ''}</td>`;
                                 });
                                 html += '</tr>';
                             }
@@ -1425,11 +1416,11 @@
                             html += `<tr style="font-weight:bold;background:#f9f9f9;">`;
                             html += `<td colspan="${fixedCols}" style="border:1px solid #000;padding:4px 6px;text-align:right;font-weight:bold;">TOTAL</td>`;
                             if (showPl) html += `<td style="border:1px solid #000;padding:4px 6px;text-align:right;">${fmt(origTotal)}</td>`;
-                            vendors.forEach(function(v, vi) {
+                            vendors.forEach(function (v, vi) {
                                 const isRec = v.name === selVendor;
                                 let vTotal = 0;
                                 rows.forEach(r => { vTotal += (r.prices[vi] || 0) * r.qty; });
-                                html += `<td style="border:1px solid #000;padding:4px 6px;text-align:right;font-weight:bold;${isRec?'background:#f0fff4;':''}">${fmt(vTotal)}</td>`;
+                                html += `<td style="border:1px solid #000;padding:4px 6px;text-align:right;font-weight:bold;${isRec ? 'background:#f0fff4;' : ''}">${fmt(vTotal)}</td>`;
                             });
                             html += '</tr>';
 
@@ -1438,7 +1429,7 @@
                         }
 
                         // Load draft / prefill after DOM ready
-                        document.addEventListener('DOMContentLoaded', function() {
+                        document.addEventListener('DOMContentLoaded', function () {
                             loadDraft();
                             /* Remark: kept for future use
                             document.querySelectorAll('.pricelist-ori-input').forEach(function(inp) {
@@ -1451,7 +1442,7 @@
                         @if (session('clear_draft_key'))
                             try {
                                 localStorage.removeItem('{{ session('clear_draft_key') }}');
-                            } catch (e) {}
+                            } catch (e) { }
                         @endif
                     </script>
                 @endif
@@ -1484,7 +1475,7 @@
 
                 // 2. Best price purchase in history (lowest price, most recent date on tie)
                 $byPriceAsc = $otherRows;
-                usort($byPriceAsc, function($a, $b) {
+                usort($byPriceAsc, function ($a, $b) {
                     if ($a['price_unit'] == $b['price_unit']) {
                         return strtotime($b['date']) <=> strtotime($a['date']);
                     }
@@ -1494,7 +1485,7 @@
 
                 // 3. Highest price purchase in history (highest price, most recent date on tie)
                 $byPriceDesc = $otherRows;
-                usort($byPriceDesc, function($a, $b) {
+                usort($byPriceDesc, function ($a, $b) {
                     if ($a['price_unit'] == $b['price_unit']) {
                         return strtotime($b['date']) <=> strtotime($a['date']);
                     }
@@ -1530,23 +1521,25 @@
                 $isLatestWorst = $hasVariation && $mostRecentRow && $mostRecentRow['price_unit'] == $globalMax;
 
                 // Determine whether standalone Best Price row is needed (distinct from Latest)
-                $showBestRow = $hasVariation 
-                    && $bestPriceRow 
+                $showBestRow = $hasVariation
+                    && $bestPriceRow
                     && $bestPriceRow['order_id'] !== ($mostRecentRow['order_id'] ?? null)
                     && $bestPriceRow['price_unit'] < ($mostRecentRow['price_unit'] ?? 0);
 
                 // Determine whether standalone Highest Price row is needed (distinct from Latest and Best)
-                $showWorstRow = $hasVariation 
-                    && $worstPriceRow 
+                $showWorstRow = $hasVariation
+                    && $worstPriceRow
                     && $worstPriceRow['order_id'] !== ($mostRecentRow['order_id'] ?? null)
                     && $worstPriceRow['order_id'] !== ($bestPriceRow['order_id'] ?? null)
                     && $worstPriceRow['price_unit'] > ($mostRecentRow['price_unit'] ?? 0)
                     && $worstPriceRow['price_unit'] > ($bestPriceRow['price_unit'] ?? 0);
             @endphp
 
-            <div class="product-block">
-                <div class="card">
-                    <div class="card-header py-2 d-flex align-items-center gap-3">
+            <div class="product-block mb-4">
+                <div class="card product-item-card shadow-sm"
+                    style="border: 2px solid #94a3b8; border-radius: 8px; overflow: hidden;">
+                    <div class="card-header py-2 d-flex align-items-center gap-3"
+                        style="background-color: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
                         <span class="product-name d-flex align-items-center gap-2">
                             <i class="bi bi-box-seam text-muted"></i>
                             <span class="badge bg-secondary">{{ $productName }}</span>
@@ -1559,7 +1552,7 @@
                             RFQ Unit Price:&nbsp;
                             <strong @class([
                                 'text-success' => $isCurrentBest,
-                                'text-danger'  => $isCurrentWorst,
+                                'text-danger' => $isCurrentWorst,
                             ])>
                                 {{ $currency }} {{ number_format($line['price_unit'], 2, ',', '.') }}
                             </strong>
@@ -1610,43 +1603,40 @@
                                             @endif
                                         </td>
                                     </tr>
-                                </tbody>
-                            </table>
-                        </div>
 
-                        {{-- Section Header / Separator for History --}}
-                        <div class="d-flex align-items-center justify-content-between px-3 py-2 border-top border-bottom" style="background-color: #f8fafc;">
-                            <div class="d-flex align-items-center gap-2">
-                                <i class="bi bi-clock-history text-primary fs-6"></i>
-                                <span class="fw-bold text-dark" style="font-size: 0.82rem; letter-spacing: 0.02em;">Purchase History</span>
-                                <span class="badge bg-secondary-subtle text-secondary border" style="font-size: 0.68rem; font-weight: 500;">Odoo</span>
-                            </div>
-                            @if ($totalHistoryCount > 0)
-                                <span class="badge bg-white text-secondary border font-monospace shadow-sm" style="font-size: 0.72rem; font-weight: 500;">
-                                    <i class="bi bi-receipt me-1"></i>{{ $totalHistoryCount }} past {{ \Illuminate\Support\Str::plural('purchase', $totalHistoryCount) }}
-                                </span>
-                            @endif
-                        </div>
-
-                        {{-- TABLE 2: Historical Benchmarks --}}
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-sm align-middle mb-0">
-                                <thead>
-                                    <tr class="table-light text-muted small text-nowrap">
-                                        <th class="ps-3" style="width: 30%;">Historical Vendor</th>
-                                        <th class="text-center" style="width: 16%;">Unit Price</th>
-                                        <th class="text-center" style="width: 6%;">Qty</th>
-                                        <th class="text-center" style="width: 6%;">UoM</th>
-                                        <th style="width: 15%;">Past PO</th>
-                                        <th style="width: 14%;">Purchase Date</th>
-                                        <th class="text-center" style="width: 13%;">Note</th>
+                                    {{-- Divider: Purchase History --}}
+                                    <tr class="border-top border-bottom" style="background-color: #f8fafc;">
+                                        <td colspan="7" class="px-3 py-2">
+                                            <div class="d-flex align-items-center justify-content-between">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <i class="bi bi-clock-history text-primary fs-6"></i>
+                                                    <span class="fw-bold text-dark" style="font-size: 0.82rem; letter-spacing: 0.02em;">Purchase History</span>
+                                                    <span class="badge bg-secondary-subtle text-secondary border" style="font-size: 0.68rem; font-weight: 500;">Odoo</span>
+                                                </div>
+                                                @if ($totalHistoryCount > 0)
+                                                    <span class="badge bg-white text-secondary border font-monospace shadow-sm" style="font-size: 0.72rem; font-weight: 500;">
+                                                        <i class="bi bi-receipt me-1"></i>{{ $totalHistoryCount }} past {{ \Illuminate\Support\Str::plural('purchase', $totalHistoryCount) }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody>
+
+                                    {{-- Historical Table Header Row --}}
+                                    <tr class="table-light text-muted small text-nowrap">
+                                        <th class="ps-3">Historical Vendor</th>
+                                        <th class="text-center">Unit Price</th>
+                                        <th class="text-center">Qty</th>
+                                        <th class="text-center">UoM</th>
+                                        <th>Past PO</th>
+                                        <th>Purchase Date</th>
+                                        <th class="text-center">Note</th>
+                                    </tr>
+
                                     {{-- Row 2: Latest Purchase row --}}
                                     @if ($mostRecentRow)
-                                        <tr class="table-info" style="border-left: 3px solid #0d6efd;">
-                                            <td class="ps-3 fw-semibold">
+                                        <tr class="table-info">
+                                            <td class="ps-3 fw-semibold" style="box-shadow: inset 4px 0 0 #0d6efd;">
                                                 {{ $mostRecentRow['vendor_name'] }}
                                             </td>
                                             <td class="text-center fw-semibold">
@@ -1735,7 +1725,8 @@
                                     @if (!$mostRecentRow)
                                         <tr>
                                             <td colspan="7" class="text-center text-muted py-3 small">
-                                                <i class="bi bi-clock-history me-1"></i>No past purchase history found in Odoo for this product.
+                                                <i class="bi bi-clock-history me-1"></i>No past purchase history found in Odoo for this
+                                                product.
                                             </td>
                                         </tr>
                                     @endif
