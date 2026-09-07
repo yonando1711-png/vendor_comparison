@@ -705,11 +705,6 @@
                                                     </td>
                                                     <td class="text-center fw-bold">
                                                         {{ $currency }} {{ number_format($line['price_unit'], 2, ',', '.') }}
-                                                        @if ($isCurrentBest)
-                                                            <i class="bi bi-check-circle-fill text-success ms-1" title="Best Price"></i>
-                                                        @elseif ($isCurrentWorst)
-                                                            <i class="bi bi-arrow-up-circle-fill text-danger ms-1" title="Highest Price"></i>
-                                                        @endif
                                                     </td>
                                                     <td class="text-center">{{ $line['product_qty'] }}</td>
                                                     <td class="text-center">{{ $uom }}</td>
@@ -763,11 +758,6 @@
                                                         <td class="text-center fw-semibold">
                                                             {{ $currency }}
                                                             {{ number_format($mostRecentRow['price_unit'], 2, ',', '.') }}
-                                                            @if ($isLatestBest)
-                                                                <i class="bi bi-check-circle-fill text-success ms-1" title="Best Price"></i>
-                                                            @elseif ($isLatestWorst)
-                                                                <i class="bi bi-arrow-up-circle-fill text-danger ms-1" title="Highest Price"></i>
-                                                            @endif
                                                         </td>
                                                         <td class="text-center">{{ $mostRecentRow['product_qty'] }}</td>
                                                         <td class="text-center">{{ $mostRecentRow['uom'] }}</td>
@@ -801,7 +791,6 @@
                                                         <td class="text-center fw-semibold">
                                                             {{ $currency }}
                                                             {{ number_format($bestPriceRow['price_unit'], 2, ',', '.') }}
-                                                            <i class="bi bi-check-circle-fill text-success ms-1" title="Best Price"></i>
                                                         </td>
                                                         <td class="text-center">{{ $bestPriceRow['product_qty'] }}</td>
                                                         <td class="text-center">{{ $bestPriceRow['uom'] }}</td>
@@ -830,7 +819,6 @@
                                                         <td class="text-center">
                                                             {{ $currency }}
                                                             {{ number_format($worstPriceRow['price_unit'], 2, ',', '.') }}
-                                                            <i class="bi bi-arrow-up-circle-fill text-danger ms-1" title="Highest Price"></i>
                                                         </td>
                                                         <td class="text-center">{{ $worstPriceRow['product_qty'] }}</td>
                                                         <td class="text-center">{{ $worstPriceRow['uom'] }}</td>
